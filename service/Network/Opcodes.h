@@ -1,0 +1,10 @@
+#pragma once
+
+enum Opcode
+{
+    CMSG_HANDSHAKE,
+    SMSG_HANDSHAKE,
+    IMSG_HANDSHAKE,
+    IMSG_HANDSHAKE_RESPONSE,
+    OPCODE_MAX_COUNT
+};
