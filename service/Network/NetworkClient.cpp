@@ -70,10 +70,13 @@ void NetworkClient::HandleRead()
 
             // Payload
             {
-                packet->payload = ByteBuffer::Borrow<NETWORK_BUFFER_SIZE>();
-                packet->payload->Size = size;
-                packet->payload->WrittenData = size;
-                std::memcpy(packet->payload->GetDataPointer(), buffer->GetReadPointer(), size);
+                if (size)
+                {
+                    packet->payload = ByteBuffer::Borrow<NETWORK_BUFFER_SIZE>();
+                    packet->payload->Size = size;
+                    packet->payload->WrittenData = size;
+                    std::memcpy(packet->payload->GetDataPointer(), buffer->GetReadPointer(), size);
+                }
             }
 
             connectionComponent->packetQueue.enqueue(packet);

@@ -21,13 +21,23 @@
 // Handlers
 #include "Network/Handlers/Server/GeneralHandlers.h"
 
-EngineLoop::EngineLoop(f32 targetTickRate)
+EngineLoop::EngineLoop()
     : _isRunning(false), _inputQueue(256), _outputQueue(256)
 {
     _network.asioService = std::make_shared<asio::io_service>(2);
     _network.server = std::make_shared<NetworkServer>(_network.asioService, 3724);
 
-    _targetTickRate = targetTickRate;
+    /* Example Usage of our current DB Interface
+    
+    std::shared_ptr<QueryResult> result = conn.Query("SELECT id, value, date FROM test");
+    while (result->GetNextRow())
+    {
+        const Field& idField = result->GetField(0);
+        const Field& valueField = result->GetField(1);
+        const Field& dateField = result->GetField(2);
+    
+        //NC_LOG_SUCCESS("Query data(%i, %f, %s)", idField.GetI32(), valueField.GetF32(), dateField.GetString().c_str());
+    }*/
 }
 
 EngineLoop::~EngineLoop()
@@ -81,8 +91,26 @@ void EngineLoop::Run()
 
     _network.server->Start();
 
+    /*DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
+    
+    for (i32 i = 0; i < 11; i++)
+    {
+        conn.QueryAsync("SELECT id, value, date FROM test",
+            [&](std::shared_ptr<QueryResult> result)
+            {
+                while (result->GetNextRow())
+                {
+                    const Field& idField = result->GetField(0);
+                    const Field& valueField = result->GetField(1);
+                    const Field& dateField = result->GetField(2);
+
+                    PrintMessage("WorkerThread completed query");
+                }
+            });
+    }*/
+
     Timer timer;
-    f32 targetDelta = 1.0f / _targetTickRate;
+    f32 targetDelta = 1.0f / 30.0f;
     while (true)
     {
         f32 deltaTime = timer.GetDeltaTime();

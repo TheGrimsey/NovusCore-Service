@@ -17,13 +17,17 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
                 NetworkPacket* packet;
             while (connectionComponent.packetQueue.try_dequeue(packet))
             {
-                if (!messageHandler->CallHandler(packet))
+                if (!messageHandler->CallHandler(connectionComponent.connection, packet))
                 {
                     connectionComponent.packetQueue.enqueue(packet);
                     continue;
                 }
 
                 delete packet;
+
+                // We might close the socket during a handler
+                if (connectionComponent.connection->IsClosed())
+                    break;
             }
     });
 }

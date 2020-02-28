@@ -43,7 +43,6 @@ struct FrameworkRegistryPair
     tf::Taskflow taskflow;
 };
 
-
 struct NetworkPair
 {
     std::shared_ptr<NetworkServer> server;
@@ -53,7 +52,7 @@ struct NetworkPair
 class EngineLoop
 {
 public:
-    EngineLoop(f32 targetTickRate);
+    EngineLoop();
     ~EngineLoop();
 
     void Start();
@@ -84,7 +83,6 @@ private:
     void SetMessageHandler();
 private:
     bool _isRunning;
-    f32 _targetTickRate;
 
     moodycamel::ConcurrentQueue<Message> _inputQueue;
     moodycamel::ConcurrentQueue<Message> _outputQueue;

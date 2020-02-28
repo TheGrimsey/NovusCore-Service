@@ -1,6 +1,8 @@
 #pragma once
+#include <memory>
 
 class MessageHandler;
+class NetworkClient;
 struct NetworkPacket;
 namespace Server
 {
@@ -8,7 +10,7 @@ namespace Server
     {
     public:
         static void Setup(MessageHandler*);
-        static bool HandshakeHandler(NetworkPacket*);
-        static bool HandshakeResponseHandler(NetworkPacket*);
+        static bool ClientHandshakeHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
+        static bool ClientHandshakeResponseHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
     };
 }

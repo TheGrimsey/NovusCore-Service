@@ -18,7 +18,7 @@ i32 main()
     SetConsoleTitle(WINDOWNAME);
 #endif
 
-    EngineLoop engineLoop(30);
+    EngineLoop engineLoop;
     engineLoop.Start();
 
     ConsoleCommandHandler consoleCommandHandler;
