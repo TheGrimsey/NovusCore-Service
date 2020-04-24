@@ -42,7 +42,7 @@ void ConnectionDeferredSystem::Update(entt::registry& registry)
         entt::entity entity = registry.create();
 
         ConnectionComponent* connectionComponent = &registry.assign<ConnectionComponent>(entity);
-        connectionComponent->connection = std::make_shared<NetworkClient>(socket, entt::to_integer(entity));
+        connectionComponent->connection = std::make_shared<NetworkClient>(socket, entt::to_integral(entity));
 
         connectionDeferredSingleton.networkServer->AddConnection(connectionComponent->connection);
     }
