@@ -1,6 +1,8 @@
 #pragma once
 #include <Networking/BaseSocket.h>
+
 #include <Utils/DebugHandler.h>
+#include <Utils/srp.h>
 
 enum BuildType
 {
@@ -21,6 +23,7 @@ struct ClientLogonChallenge
     u16 gameBuild;
     std::string gameName;
     std::string username;
+    u8 A[256];
 
     std::string BuildTypeString()
     {
@@ -55,13 +58,14 @@ struct ClientLogonChallenge
         buffer->GetU16(gameBuild);
         buffer->GetString(gameName);
         buffer->GetString(username);
+        buffer->GetBytes(A, 256);
     }
 };
 struct ServerLogonChallenge
 {
     u8 status;
-    u8 B[128];
-    u8 s[8];
+    u8 B[256];
+    u8 s[4];
 
     u16 Serialize(std::shared_ptr<ByteBuffer> buffer)
     {
@@ -70,8 +74,8 @@ struct ServerLogonChallenge
         buffer->PutU8(status);
         if (status == 0)
         {
-            buffer->PutBytes(B, 128);
-            buffer->PutBytes(s, 8);
+            buffer->PutBytes(B, 256);
+            buffer->PutBytes(s, 4);
         }
 
         return static_cast<u16>(buffer->WrittenData) - size;
@@ -83,7 +87,20 @@ struct ClientLogonResponse
 
     void Deserialize(std::shared_ptr<ByteBuffer> buffer)
     {
-        buffer->GetBytes(M1, 32);
+        buffer->GetBytes(M1, sizeof(M1));
+    }
+};
+struct ServerLogonResponse
+{
+    u8 HAMK[32];
+
+    u16 Serialize(std::shared_ptr<ByteBuffer> buffer)
+    {
+        u16 size = static_cast<u16>(buffer->WrittenData);
+        {
+            buffer->PutBytes(HAMK, sizeof(HAMK));
+        }
+        return static_cast<u16>(buffer->WrittenData) - size;
     }
 };
 #pragma pack(pop)
@@ -113,6 +130,7 @@ public:
     void SetIdentity(u64 identity) { _identity = identity; }
 
     std::string username = "";
+    SRPVerifier srp;
 private:
     BaseSocket* _baseSocket;
     u64 _identity;
