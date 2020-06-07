@@ -34,6 +34,7 @@
 
 #include "ConsoleCommands/QuitCommand.h"
 #include "ConsoleCommands/PingCommand.h"
+#include "ConsoleCommands/AccountCommand.h"
 
 class ConsoleCommandHandler
 {
@@ -42,6 +43,7 @@ public:
     {
         RegisterCommand("quit"_h, &QuitCommand);
         RegisterCommand("ping"_h, &PingCommand);
+        RegisterCommand("account"_h, &AccountCommand);
     }
 
     void HandleCommand(EngineLoop& engineLoop, std::string& command)

@@ -44,7 +44,7 @@ void NetworkClient::HandleRead()
     entt::registry* gameRegistry = ServiceLocator::GetGameRegistry();
 
     entt::entity entity = static_cast<entt::entity>(_identity);
-    ConnectionComponent* connectionComponent = &gameRegistry->get<ConnectionComponent>(entity);
+    ConnectionComponent& connectionComponent = gameRegistry->get<ConnectionComponent>(entity);
 
     while (buffer->GetActiveSize())
     {
@@ -79,7 +79,7 @@ void NetworkClient::HandleRead()
                 }
             }
 
-            connectionComponent->packetQueue.enqueue(packet);
+            connectionComponent.packetQueue.enqueue(packet);
         }
 
         buffer->ReadData += size;
