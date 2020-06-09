@@ -1,8 +1,8 @@
 #pragma once
 #include <NovusTypes.h>
-#include <Utils/ConcurrentQueue.h>
 #include <asio.hpp>
-#include "../../../Network/NetworkServer.h"
+#include <Utils/ConcurrentQueue.h>
+#include <Networking/NetworkServer.h>
 
 struct ConnectionDeferredSingleton
 {

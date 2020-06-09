@@ -1,5 +1,5 @@
 #include "ServiceLocator.h"
-#include "../Network/MessageHandler.h"
+#include <Networking/MessageHandler.h>
 
 entt::registry* ServiceLocator::_gameRegistry = nullptr;
 MessageHandler* ServiceLocator::_networkMessageHandler = nullptr;

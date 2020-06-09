@@ -23,13 +23,13 @@
 */
 #pragma once
 #include <NovusTypes.h>
+#include <entt.hpp>
+#include <taskflow/taskflow.hpp>
+#include <asio/io_service.hpp>
 #include <Utils/Message.h>
 #include <Utils/StringUtils.h>
 #include <Utils/ConcurrentQueue.h>
-#include <taskflow/taskflow.hpp>
-#include <entt.hpp>
-#include <asio/io_service.hpp>
-#include "Network/NetworkServer.h"
+#include <Networking/NetworkServer.h>
 
 namespace tf
 {

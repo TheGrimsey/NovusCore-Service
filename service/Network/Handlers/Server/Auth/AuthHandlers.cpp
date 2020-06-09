@@ -1,10 +1,13 @@
 #include "AuthHandlers.h"
-#include "../../../MessageHandler.h"
-#include "../../../NetworkClient.h"
-#include "../../../NetworkPacket.h"
+#include <entt.hpp>
+#include <Networking/MessageHandler.h>
+#include <Networking/NetworkPacket.h>
+#include <Networking/NetworkClient.h>
 #include <Utils/ByteBuffer.h>
 #include <Utils/StringUtils.h>
 #include <Database/DBConnection.h>
+#include "../../../../Utils/ServiceLocator.h"
+#include "../../../../ECS/Components/Network/Authentication.h"
 
 // @TODO: Remove Temporary Includes when they're no longer needed
 #include <Utils/DebugHandler.h>
@@ -25,14 +28,17 @@ bool Server::AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient>
     NC_LOG_MESSAGE("Game Name (%s)", logonChallenge.gameName.c_str());
     NC_LOG_MESSAGE("Username (%s)", logonChallenge.username.c_str());
 
-    client->username = logonChallenge.username;
+    entt::registry* gameRegistry = ServiceLocator::GetGameRegistry();
+    Authentication& authentication = gameRegistry->get<Authentication>(static_cast<entt::entity>(client->GetIdentity()));
+    authentication.username = logonChallenge.username;
+
     std::shared_ptr<ByteBuffer> sBuffer = ByteBuffer::Borrow<4>();
     std::shared_ptr<ByteBuffer> vBuffer = ByteBuffer::Borrow<256>();
 
     DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
 
     std::stringstream ss;
-    ss << "SELECT salt, verifier FROM accounts WHERE username='" << client->username << "';";
+    ss << "SELECT salt, verifier FROM accounts WHERE username='" << authentication.username << "';";
 
     std::shared_ptr<QueryResult> result = conn.Query(ss.str());
     conn.Close();
@@ -41,7 +47,7 @@ bool Server::AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient>
     // TODO: Generate Random Salt & Verifier (Shorter length?) and "fake" logon challenge to not give away if an account exists or not
     if (result->GetAffectedRows() == 0)
     {
-        NC_LOG_WARNING("Unsuccessful Login for: %s", client->username.c_str());
+        NC_LOG_WARNING("Unsuccessful Login for: %s", authentication.username.c_str());
         client->Close(asio::error::no_data);
         return true;
     }
@@ -58,13 +64,13 @@ bool Server::AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient>
         StringUtils::HexStrToBytes(verifier.c_str(), vBuffer->GetDataPointer());
     }
 
-    client->srp.saltBuffer = sBuffer;
-    client->srp.verifierBuffer = vBuffer;
+    authentication.srp.saltBuffer = sBuffer;
+    authentication.srp.verifierBuffer = vBuffer;
 
     // If "StartVerification" fails, we have either hit a bad memory allocation or a SRP-6a safety check, thus we should close the connection
-    if (!client->srp.StartVerification(client->username, logonChallenge.A))
+    if (!authentication.srp.StartVerification(authentication.username, logonChallenge.A))
     {
-        NC_LOG_WARNING("Unsuccessful Login for: %s", client->username.c_str());
+        NC_LOG_WARNING("Unsuccessful Login for: %s", authentication.username.c_str());
         client->Close(asio::error::no_data);
         return true;
     }
@@ -73,8 +79,8 @@ bool Server::AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient>
     ServerLogonChallenge serverChallenge;
     serverChallenge.status = 0;
 
-    std::memcpy(serverChallenge.s, client->srp.saltBuffer->GetDataPointer(), client->srp.saltBuffer->Size);
-    std::memcpy(serverChallenge.B, client->srp.bBuffer->GetDataPointer(), client->srp.bBuffer->Size);
+    std::memcpy(serverChallenge.s, authentication.srp.saltBuffer->GetDataPointer(), authentication.srp.saltBuffer->Size);
+    std::memcpy(serverChallenge.B, authentication.srp.bBuffer->GetDataPointer(), authentication.srp.bBuffer->Size);
 
     buffer->PutU16(Opcode::SMSG_LOGON_CHALLENGE);
     buffer->PutU16(0);
@@ -90,17 +96,20 @@ bool Server::AuthHandlers::ClientHandshakeResponseHandler(std::shared_ptr<Networ
     ClientLogonResponse logonResponse;
     logonResponse.Deserialize(packet->payload);
 
-    if (!client->srp.VerifySession(logonResponse.M1))
+    entt::registry* gameRegistry = ServiceLocator::GetGameRegistry();
+    Authentication& authentication = gameRegistry->get<Authentication>(static_cast<entt::entity>(client->GetIdentity()));
+
+    if (!authentication.srp.VerifySession(logonResponse.M1))
     {
-        NC_LOG_WARNING("Unsuccessful Login for: %s", client->username.c_str());
+        NC_LOG_WARNING("Unsuccessful Login for: %s", authentication.username.c_str());
         client->Close(asio::error::no_permission);
         return true;
     }
 
-    NC_LOG_SUCCESS("Successful Login for: %s", client->username.c_str());
+    NC_LOG_SUCCESS("Successful Login for: %s", authentication.username.c_str());
 
     ServerLogonResponse serverChallenge;
-    std::memcpy(serverChallenge.HAMK, client->srp.HAMK, sizeof(client->srp.HAMK));
+    std::memcpy(serverChallenge.HAMK, authentication.srp.HAMK, sizeof(authentication.srp.HAMK));
 
     std::shared_ptr<ByteBuffer> buffer = ByteBuffer::Borrow<128>();
     buffer->PutU16(Opcode::SMSG_LOGON_RESPONSE);
@@ -109,5 +118,6 @@ bool Server::AuthHandlers::ClientHandshakeResponseHandler(std::shared_ptr<Networ
     u16 payloadSize = serverChallenge.Serialize(buffer);
     buffer->Put<u16>(payloadSize, 2);
     client->Send(buffer.get());
+
     return true;
 }

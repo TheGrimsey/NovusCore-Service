@@ -3,9 +3,10 @@
 #include <iostream>
 #include <Utils/Timer.h>
 #include "Utils/ServiceLocator.h"
+#include "Utils/EntityUtils.h"
 #include <Networking/InputQueue.h>
-#include "Network/NetworkClient.h"
-#include "Network/MessageHandler.h"
+#include <Networking/MessageHandler.h>
+#include <Networking/NetworkClient.h>
 #include <tracy/Tracy.hpp>
 
 // Component Singletons
@@ -14,9 +15,12 @@
 
 // Components
 #include "ECS/Components/Network/ConnectionComponent.h"
+#include "ECS/Components/GameEntityInfo.h"
+#include "ECS/Components/Transform.h"
 
 // Systems
 #include "ECS/Systems/Network/ConnectionSystems.h"
+#include "ECS/Systems/Network/InitializePlayerSystem.h"
 
 // Handlers
 #include "Network/Handlers/Server/GeneralHandlers.h"
@@ -89,6 +93,7 @@ void EngineLoop::Run()
     ConnectionDeferredSingleton& connectionDeferredSingleton = _updateFramework.gameRegistry.set<ConnectionDeferredSingleton>();
     connectionDeferredSingleton.networkServer = _network.server;
 
+    _network.server->SetConnectionHandler(std::bind(&ConnectionUpdateSystem::HandleConnection, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     _network.server->Start();
 
     /*DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
@@ -109,8 +114,31 @@ void EngineLoop::Run()
             });
     }*/
 
+    // Create New Entity
+    entt::entity entity = _updateFramework.gameRegistry.create();
+
+    GameEntityInfo& gameEntityInfo = _updateFramework.gameRegistry.assign<GameEntityInfo>(entity);
+    gameEntityInfo.type = GameEntityType::GAMEOBJECT;
+    gameEntityInfo.entryId = 1;
+
+    Transform& transform = _updateFramework.gameRegistry.assign<Transform>(entity);
+    transform.position = vec3(16533.3320f, 0.0f, 26133.3320f);
+    transform.rotation = vec3(0, 0, 0);
+    transform.scale = vec3(1, 1, 1);
+
+    entt::entity entity1 = _updateFramework.gameRegistry.create();
+
+    GameEntityInfo& gameEntityInfo1 = _updateFramework.gameRegistry.assign<GameEntityInfo>(entity1);
+    gameEntityInfo1.type = GameEntityType::GAMEOBJECT;
+    gameEntityInfo1.entryId = 1;
+
+    Transform& transform1 = _updateFramework.gameRegistry.assign<Transform>(entity1);
+    transform1.position = vec3(16543.3320f, 0.0f, 26143.3320f);
+    transform1.rotation = vec3(0, 0, 0);
+    transform1.scale = vec3(1, 1, 1);
+
     Timer timer;
-    f32 targetDelta = 1.0f / 30.0f;
+    f32 targetDelta = 1.0f / 60.0f;
     while (true)
     {
         f32 deltaTime = timer.GetDeltaTime();
@@ -206,12 +234,21 @@ void EngineLoop::SetupUpdateFramework()
         ConnectionUpdateSystem::Update(gameRegistry);
     });
 
+    // InitializePlayerSystem
+    tf::Task initializePlayerSystemTask = framework.emplace([&gameRegistry]()
+    {
+        ZoneScopedNC("InitializePlayerSystem::Update", tracy::Color::Blue2)
+            InitializePlayerSystem::Update(gameRegistry);
+    });
+    initializePlayerSystemTask.gather(connectionUpdateSystemTask);
+
     // ConnectionDeferredSystem
     tf::Task connectionDeferredSystemTask = framework.emplace([&gameRegistry]()
     {
         ZoneScopedNC("ConnectionDeferredSystem::Update", tracy::Color::Blue2)
             ConnectionDeferredSystem::Update(gameRegistry);
     });
+    connectionDeferredSystemTask.gather(initializePlayerSystemTask);
 }
 void EngineLoop::SetMessageHandler()
 {
