@@ -115,7 +115,7 @@ void EngineLoop::Run()
     }*/
 
     // Create New Entity
-    entt::entity entity = _updateFramework.gameRegistry.create();
+    /*entt::entity entity = _updateFramework.gameRegistry.create();
 
     GameEntityInfo& gameEntityInfo = _updateFramework.gameRegistry.assign<GameEntityInfo>(entity);
     gameEntityInfo.type = GameEntityType::GAMEOBJECT;
@@ -135,7 +135,7 @@ void EngineLoop::Run()
     Transform& transform1 = _updateFramework.gameRegistry.assign<Transform>(entity1);
     transform1.position = vec3(16543.3320f, 0.0f, 26143.3320f);
     transform1.rotation = vec3(0, 0, 0);
-    transform1.scale = vec3(1, 1, 1);
+    transform1.scale = vec3(1, 1, 1);*/
 
     Timer timer;
     f32 targetDelta = 1.0f / 60.0f;

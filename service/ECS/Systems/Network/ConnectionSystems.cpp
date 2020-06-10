@@ -37,7 +37,6 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
 
 void ConnectionUpdateSystem::HandleConnection(NetworkServer* server, asio::ip::tcp::socket* socket, const asio::error_code& error)
 {
-    // NetworkServer locks the mutex for us
     if (!error)
     {
         socket->non_blocking(true);
@@ -62,10 +61,10 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
 
     while (buffer->GetActiveSize())
     {
-        u16 opcode = 0;
+        Opcode opcode = Opcode::INVALID;
         u16 size = 0;
 
-        buffer->GetU16(opcode);
+        buffer->Get(opcode);
         buffer->GetU16(size);
 
         if (size > NETWORK_BUFFER_SIZE)

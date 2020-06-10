@@ -82,7 +82,7 @@ bool Server::AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient>
     std::memcpy(serverChallenge.s, authentication.srp.saltBuffer->GetDataPointer(), authentication.srp.saltBuffer->Size);
     std::memcpy(serverChallenge.B, authentication.srp.bBuffer->GetDataPointer(), authentication.srp.bBuffer->Size);
 
-    buffer->PutU16(Opcode::SMSG_LOGON_CHALLENGE);
+    buffer->Put(Opcode::SMSG_LOGON_CHALLENGE);
     buffer->PutU16(0);
 
     u16 payloadSize = serverChallenge.Serialize(buffer);
@@ -112,7 +112,7 @@ bool Server::AuthHandlers::ClientHandshakeResponseHandler(std::shared_ptr<Networ
     std::memcpy(serverChallenge.HAMK, authentication.srp.HAMK, sizeof(authentication.srp.HAMK));
 
     std::shared_ptr<ByteBuffer> buffer = ByteBuffer::Borrow<128>();
-    buffer->PutU16(Opcode::SMSG_LOGON_RESPONSE);
+    buffer->Put(Opcode::SMSG_LOGON_RESPONSE);
     buffer->PutU16(0);
 
     u16 payloadSize = serverChallenge.Serialize(buffer);
