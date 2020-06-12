@@ -2,6 +2,7 @@
 #include <entt.hpp>
 #include <Networking/MessageHandler.h>
 #include <Networking/NetworkServer.h>
+#include "../../Components/Singletons/TimeSingleton.h"
 #include "../../Components/Network/Authentication.h"
 #include "../../Components/Network/ConnectionComponent.h"
 #include "../../Components/Network/ConnectionDeferredSingleton.h"
@@ -13,25 +14,53 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
 {
     ZoneScopedNC("ConnectionUpdateSystem::Update", tracy::Color::Blue)
 
+    TimeSingleton& timeSingleton = registry.ctx<TimeSingleton>();
+    f32 deltaTime = timeSingleton.deltaTime;
+
     MessageHandler* messageHandler = ServiceLocator::GetNetworkMessageHandler();
     auto view = registry.view<ConnectionComponent>();
-    view.each([&registry, &messageHandler](const auto, ConnectionComponent& connectionComponent)
+    view.each([&registry, &messageHandler, deltaTime](const auto, ConnectionComponent& connection)
     {
-
                 NetworkPacket* packet;
-            while (connectionComponent.packetQueue.try_dequeue(packet))
+            while (connection.packetQueue.try_dequeue(packet))
             {
-                if (!messageHandler->CallHandler(connectionComponent.connection, packet))
+                if (!messageHandler->CallHandler(connection.connection, packet))
                 {
-                    connectionComponent.packetQueue.enqueue(packet);
+                    connection.packetQueue.enqueue(packet);
                     continue;
                 }
 
                 delete packet;
 
                 // We might close the socket during a handler
-                if (connectionComponent.connection->IsClosed())
-                    break;
+                if (connection.connection->IsClosed())
+                    return;
+            }
+
+            if (connection.lowPriorityBuffer->WrittenData)
+            {
+                connection.lowPriorityTimer += deltaTime;
+                if (connection.lowPriorityTimer >= LOW_PRIORITY_TIME)
+                {
+                    connection.lowPriorityTimer = 0;
+                    connection.connection->Send(connection.lowPriorityBuffer.get());
+                    connection.lowPriorityBuffer->Reset();
+                }
+            }
+            if (connection.mediumPriorityBuffer->WrittenData)
+            {
+                connection.mediumPriorityTimer += deltaTime;
+                if (connection.mediumPriorityTimer >= MEDIUM_PRIORITY_TIME)
+                {
+                    connection.mediumPriorityTimer = 0;
+                    connection.connection->Send(connection.mediumPriorityBuffer.get());
+                    connection.mediumPriorityBuffer->Reset();
+                }
+            }
+            if (connection.highPriorityBuffer->WrittenData)
+            {
+                connection.connection->Send(connection.highPriorityBuffer.get());
+                connection.highPriorityBuffer->Reset();
             }
     });
 }

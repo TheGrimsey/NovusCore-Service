@@ -72,7 +72,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
     {
         connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializedConnection&)
             {
-                connectionComponent.connection->Send(buffer.get());
+                connectionComponent.AddPacket(buffer, PacketPriority::HIGH);
             });
     }
 
@@ -80,7 +80,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
     {
         initialConnectionView.each([&registry, &initialConnectionBuffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializeWorldState& initializeWorldState, JustSpawned& justSpawned)
             {
-                connectionComponent.connection->Send(initialConnectionBuffer.get());
+                connectionComponent.AddPacket(initialConnectionBuffer, PacketPriority::HIGH);
             });
 
         registry.assign<InitializedConnection>(initialConnectionView.begin(), initialConnectionView.end());
