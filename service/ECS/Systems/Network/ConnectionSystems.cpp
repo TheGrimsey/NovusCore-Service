@@ -5,6 +5,7 @@
 #include "../../Components/Network/Authentication.h"
 #include "../../Components/Network/ConnectionComponent.h"
 #include "../../Components/Network/ConnectionDeferredSingleton.h"
+#include "../../Components/Network/InitializedConnection.h"
 #include "../../../Utils/ServiceLocator.h"
 #include <tracy/Tracy.hpp>
 
@@ -114,27 +115,51 @@ void ConnectionDeferredSystem::Update(entt::registry& registry)
 {
     ConnectionDeferredSingleton& connectionDeferredSingleton = registry.ctx<ConnectionDeferredSingleton>();
 
-    asio::ip::tcp::socket* socket;
-    while (connectionDeferredSingleton.newConnectionQueue.try_dequeue(socket))
+    if (connectionDeferredSingleton.newConnectionQueue.size_approx() > 0)
     {
-        entt::entity entity = registry.create();
+        asio::ip::tcp::socket* socket;
+        while (connectionDeferredSingleton.newConnectionQueue.try_dequeue(socket))
+        {
+            entt::entity entity = registry.create();
 
-        ConnectionComponent* connectionComponent = &registry.assign<ConnectionComponent>(entity);
-        connectionComponent->connection = std::make_shared<NetworkClient>(socket, entt::to_integral(entity));
+            ConnectionComponent* connectionComponent = &registry.assign<ConnectionComponent>(entity);
+            connectionComponent->connection = std::make_shared<NetworkClient>(socket, entt::to_integral(entity));
 
-        Authentication* authentication = &registry.assign<Authentication>(entity);
+            Authentication* authentication = &registry.assign<Authentication>(entity);
 
-        connectionComponent->connection->SetReadHandler(std::bind(&ConnectionUpdateSystem::HandleRead, std::placeholders::_1));
-        connectionComponent->connection->SetDisconnectHandler(std::bind(&ConnectionUpdateSystem::HandleDisconnect, std::placeholders::_1));
-        connectionComponent->connection->Listen();
+            connectionComponent->connection->SetReadHandler(std::bind(&ConnectionUpdateSystem::HandleRead, std::placeholders::_1));
+            connectionComponent->connection->SetDisconnectHandler(std::bind(&ConnectionUpdateSystem::HandleDisconnect, std::placeholders::_1));
+            connectionComponent->connection->Listen();
 
-        connectionDeferredSingleton.networkServer->AddConnection(connectionComponent->connection);
+            connectionDeferredSingleton.networkServer->AddConnection(connectionComponent->connection);
+        }
     }
 
-    u64 entityid;
-    while (connectionDeferredSingleton.droppedConnectionQueue.try_dequeue(entityid))
+    if (connectionDeferredSingleton.droppedConnectionQueue.size_approx() > 0)
     {
-        entt::entity entity = static_cast<entt::entity>(entityid);
-        registry.destroy(entity);
+        std::shared_ptr<ByteBuffer> buffer = ByteBuffer::Borrow<8192>();
+        u64 entityid;
+        while (connectionDeferredSingleton.droppedConnectionQueue.try_dequeue(entityid))
+        {
+            entt::entity entity = static_cast<entt::entity>(entityid);
+
+            buffer->Put(Opcode::SMSG_DELETE_ENTITY);
+            buffer->PutU16(sizeof(ENTT_ID_TYPE));
+            buffer->Put(entity);
+
+            registry.destroy(entity);
+        }
+
+        auto connectionView = registry.view<ConnectionComponent, InitializedConnection>();
+        if (connectionView.size() > 0)
+        {
+            if (buffer->WrittenData)
+            {
+                connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializedConnection&)
+                    {
+                        connectionComponent.connection->Send(buffer.get());
+                    });
+            }
+        }
     }
 }
