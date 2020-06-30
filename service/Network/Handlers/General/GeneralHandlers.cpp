@@ -43,7 +43,7 @@ bool Network::GeneralHandlers::CMSG_CONNECTED(std::shared_ptr<NetworkClient> cli
     auto& loadBalanceSingleton = registry->ctx<LoadBalanceSingleton>();
 
     entt::entity entity = static_cast<entt::entity>(client->GetEntityId());
-    HasServerInformation& hasServerInformation = registry->assign<HasServerInformation>(entity);
+    HasServerInformation& hasServerInformation = registry->emplace<HasServerInformation>(entity);
 
     hasServerInformation.entity = entity;
     hasServerInformation.type = type;

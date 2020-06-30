@@ -163,17 +163,17 @@ void ConnectionDeferredSystem::Update(entt::registry& registry)
         {
             entt::entity entity = registry.create();
 
-            ConnectionComponent* connectionComponent = &registry.assign<ConnectionComponent>(entity);
-            connectionComponent->connection = std::make_shared<NetworkClient>(socket, entt::to_integral(entity));
+            ConnectionComponent& connectionComponent = registry.emplace<ConnectionComponent>(entity);
+            connectionComponent.connection = std::make_shared<NetworkClient>(socket, entt::to_integral(entity));
 
-            Authentication* authentication = &registry.assign<Authentication>(entity);
+            Authentication& authentication = registry.emplace<Authentication>(entity);
 
-            connectionComponent->connection->SetStatus(ConnectionStatus::AUTH_CHALLENGE);
-            connectionComponent->connection->SetReadHandler(std::bind(&ConnectionUpdateSystem::HandleRead, std::placeholders::_1));
-            connectionComponent->connection->SetDisconnectHandler(std::bind(&ConnectionUpdateSystem::HandleDisconnect, std::placeholders::_1));
-            connectionComponent->connection->Listen();
+            connectionComponent.connection->SetStatus(ConnectionStatus::AUTH_CHALLENGE);
+            connectionComponent.connection->SetReadHandler(std::bind(&ConnectionUpdateSystem::HandleRead, std::placeholders::_1));
+            connectionComponent.connection->SetDisconnectHandler(std::bind(&ConnectionUpdateSystem::HandleDisconnect, std::placeholders::_1));
+            connectionComponent.connection->Listen();
 
-            connectionDeferredSingleton.networkServer->AddConnection(connectionComponent->connection);
+            connectionDeferredSingleton.networkServer->AddConnection(connectionComponent.connection);
         }
     }
 

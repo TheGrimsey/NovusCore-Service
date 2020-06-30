@@ -24,7 +24,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
         return;
 
     auto newEntityView = registry.view<GameEntityInfo, Transform, JustSpawned>();
-    newEntityView.each([&registry, &buffer](const entt::entity& entity, GameEntityInfo& gameEntityInfo, Transform& transform, JustSpawned& justSpawned)
+    newEntityView.each([&registry, &buffer](const entt::entity& entity, GameEntityInfo& gameEntityInfo, Transform& transform)
         {
             buffer->Put(Opcode::SMSG_CREATE_ENTITY);
 
@@ -70,7 +70,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
 
     if (!connectionView.empty() && buffer->writtenData)
     {
-        connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializedConnection&)
+        connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent)
             {
                 connectionComponent.AddPacket(buffer, PacketPriority::HIGH);
             });
@@ -78,12 +78,12 @@ void InitializePlayerSystem::Update(entt::registry& registry)
 
     if (!initialConnectionView.empty() && initialConnectionBuffer->writtenData)
     {
-        initialConnectionView.each([&registry, &initialConnectionBuffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializeWorldState& initializeWorldState, JustSpawned& justSpawned)
+        initialConnectionView.each([&registry, &initialConnectionBuffer](const entt::entity& entity, ConnectionComponent& connectionComponent)
             {
                 connectionComponent.AddPacket(initialConnectionBuffer, PacketPriority::HIGH);
             });
 
-        registry.assign<InitializedConnection>(initialConnectionView.begin(), initialConnectionView.end());
+        registry.insert<InitializedConnection>(initialConnectionView.begin(), initialConnectionView.end());
         registry.remove<InitializeWorldState, JustSpawned>(initialConnectionView.begin(), initialConnectionView.end());
     }
 
