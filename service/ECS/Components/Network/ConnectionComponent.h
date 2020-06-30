@@ -18,19 +18,19 @@ struct ConnectionComponent
 {
     ConnectionComponent() : packetQueue(256) 
     { 
-        lowPriorityBuffer = ByteBuffer::Borrow<8192>();
-        mediumPriorityBuffer = ByteBuffer::Borrow<8192>();
-        highPriorityBuffer = ByteBuffer::Borrow<8192>();
+        lowPriorityBuffer = Bytebuffer::Borrow<8192>();
+        mediumPriorityBuffer = Bytebuffer::Borrow<8192>();
+        highPriorityBuffer = Bytebuffer::Borrow<8192>();
     }
 
     std::shared_ptr<NetworkClient> connection;
-    moodycamel::ConcurrentQueue<NetworkPacket*> packetQueue;
+    moodycamel::ConcurrentQueue<std::shared_ptr<NetworkPacket>> packetQueue;
 
-    void AddPacket(std::shared_ptr<ByteBuffer> buffer, PacketPriority priority = PacketPriority::MEDIUM)
+    void AddPacket(std::shared_ptr<Bytebuffer> buffer, PacketPriority priority = PacketPriority::MEDIUM)
     {
-        assert(buffer->WrittenData <= 8192);
+        assert(buffer->writtenData <= 8192);
 
-        std::shared_ptr<ByteBuffer> bufferToUse = nullptr;
+        std::shared_ptr<Bytebuffer> bufferToUse = nullptr;
         if (priority == PacketPriority::LOW)
         {
             bufferToUse = lowPriorityBuffer;
@@ -45,7 +45,7 @@ struct ConnectionComponent
         }
 
         // Should we send priority buffer's content before we add this due to size constraints
-        if (bufferToUse->GetRemainingSpace() < bufferToUse->WrittenData)
+        if (bufferToUse->GetSpace() < bufferToUse->writtenData)
         {
             connection->Send(bufferToUse.get());
             bufferToUse->Reset();
@@ -56,14 +56,14 @@ struct ConnectionComponent
                 mediumPriorityTimer = 0;
         }
         
-        memcpy(bufferToUse->GetWritePointer(), buffer->GetDataPointer(), buffer->WrittenData);
-        bufferToUse->WrittenData += buffer->WrittenData;
+        memcpy(bufferToUse->GetWritePointer(), buffer->GetDataPointer(), buffer->writtenData);
+        bufferToUse->writtenData += buffer->writtenData;
     }
 
     // The reason we are not using the Timer class is due to performance reasons (Timer creates a timepoint every call to GetLifetime())
     f32 lowPriorityTimer = 0;
     f32 mediumPriorityTimer = 0;
-    std::shared_ptr<ByteBuffer> lowPriorityBuffer;
-    std::shared_ptr<ByteBuffer> mediumPriorityBuffer;
-    std::shared_ptr<ByteBuffer> highPriorityBuffer;
+    std::shared_ptr<Bytebuffer> lowPriorityBuffer;
+    std::shared_ptr<Bytebuffer> mediumPriorityBuffer;
+    std::shared_ptr<Bytebuffer> highPriorityBuffer;
 };

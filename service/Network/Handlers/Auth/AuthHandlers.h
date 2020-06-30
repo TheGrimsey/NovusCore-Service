@@ -4,13 +4,13 @@
 class MessageHandler;
 class NetworkClient;
 struct NetworkPacket;
-namespace Server
+namespace Network
 {
     class AuthHandlers
     {
     public:
         static void Setup(MessageHandler*);
+        static bool ClientChallengeHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
         static bool ClientHandshakeHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
-        static bool ClientHandshakeResponseHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
     };
 }

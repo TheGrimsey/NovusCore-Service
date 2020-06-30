@@ -6,9 +6,9 @@
 
 struct ConnectionDeferredSingleton
 {
-    ConnectionDeferredSingleton() : newConnectionQueue(256), droppedConnectionQueue(256) { }
+    ConnectionDeferredSingleton() : newConnectionQueue(64), droppedConnectionQueue(32) { }
 
     std::shared_ptr<NetworkServer> networkServer;
     moodycamel::ConcurrentQueue<asio::ip::tcp::socket*> newConnectionQueue;
-    moodycamel::ConcurrentQueue<u64> droppedConnectionQueue;
+    moodycamel::ConcurrentQueue<entt::entity> droppedConnectionQueue;
 };

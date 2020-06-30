@@ -1,9 +1,7 @@
 #include "EngineLoop.h"
 #include <thread>
-#include <iostream>
 #include <Utils/Timer.h>
 #include "Utils/ServiceLocator.h"
-#include "Utils/EntityUtils.h"
 #include <Networking/InputQueue.h>
 #include <Networking/MessageHandler.h>
 #include <Networking/NetworkClient.h>
@@ -12,6 +10,7 @@
 // Component Singletons
 #include "ECS/Components/Singletons/TimeSingleton.h"
 #include "ECS/Components/Network/ConnectionDeferredSingleton.h"
+#include "ECS/Components/Network/LoadBalanceSingleton.h"
 
 // Components
 #include "ECS/Components/Network/ConnectionComponent.h"
@@ -23,25 +22,14 @@
 #include "ECS/Systems/Network/InitializePlayerSystem.h"
 
 // Handlers
-#include "Network/Handlers/Server/GeneralHandlers.h"
+#include "Network/Handlers/Auth/AuthHandlers.h"
+#include "Network/Handlers/General/GeneralHandlers.h"
 
 EngineLoop::EngineLoop()
-    : _isRunning(false), _inputQueue(256), _outputQueue(256)
+    : _isRunning(false), _inputQueue(256), _outputQueue(16)
 {
     _network.asioService = std::make_shared<asio::io_service>(2);
-    _network.server = std::make_shared<NetworkServer>(_network.asioService, 3724);
-
-    /* Example Usage of our current DB Interface
-    
-    std::shared_ptr<QueryResult> result = conn.Query("SELECT id, value, date FROM test");
-    while (result->GetNextRow())
-    {
-        const Field& idField = result->GetField(0);
-        const Field& valueField = result->GetField(1);
-        const Field& dateField = result->GetField(2);
-    
-        //NC_LOG_SUCCESS("Query data(%i, %f, %s)", idField.GetI32(), valueField.GetF32(), dateField.GetString().c_str());
-    }*/
+    _network.internalServer = std::make_shared<NetworkServer>(_network.asioService, 8000);
 }
 
 EngineLoop::~EngineLoop()
@@ -54,12 +42,13 @@ void EngineLoop::Start()
         return;
 
     // Setup Input Queue for libraries
-    InputQueue::SetInputQueue(&_inputQueue);
+    ServiceLocator::SetInputQueue(&_inputQueue);
+
+    std::thread threadRunIoService = std::thread(&EngineLoop::RunIoService, this);
+    threadRunIoService.detach();
 
     std::thread threadRun = std::thread(&EngineLoop::Run, this);
-    std::thread threadRunIoService = std::thread(&EngineLoop::RunIoService, this);
     threadRun.detach();
-    threadRunIoService.detach();
 }
 
 void EngineLoop::Stop()
@@ -82,6 +71,11 @@ bool EngineLoop::TryGetMessage(Message& message)
     return _outputQueue.try_dequeue(message);
 }
 
+void EngineLoop::RunIoService()
+{
+    asio::io_service::work ioWork(*_network.asioService.get());
+    _network.asioService->run();
+}
 void EngineLoop::Run()
 {
     _isRunning = true;
@@ -91,10 +85,12 @@ void EngineLoop::Run()
 
     TimeSingleton& timeSingleton = _updateFramework.gameRegistry.set<TimeSingleton>();
     ConnectionDeferredSingleton& connectionDeferredSingleton = _updateFramework.gameRegistry.set<ConnectionDeferredSingleton>();
-    connectionDeferredSingleton.networkServer = _network.server;
+    LoadBalanceSingleton& loadBalanceSingleton = _updateFramework.gameRegistry.set<LoadBalanceSingleton>();
 
-    _network.server->SetConnectionHandler(std::bind(&ConnectionUpdateSystem::HandleConnection, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-    _network.server->Start();
+    connectionDeferredSingleton.networkServer = _network.internalServer;
+
+    _network.internalServer->SetConnectionHandler(std::bind(&ConnectionUpdateSystem::HandleConnection, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    _network.internalServer->Start();
 
     /*DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
     
@@ -113,29 +109,6 @@ void EngineLoop::Run()
                 }
             });
     }*/
-
-    // Create New Entity
-    /*entt::entity entity = _updateFramework.gameRegistry.create();
-
-    GameEntityInfo& gameEntityInfo = _updateFramework.gameRegistry.assign<GameEntityInfo>(entity);
-    gameEntityInfo.type = GameEntityType::GAMEOBJECT;
-    gameEntityInfo.entryId = 1;
-
-    Transform& transform = _updateFramework.gameRegistry.assign<Transform>(entity);
-    transform.position = vec3(16533.3320f, 0.0f, 26133.3320f);
-    transform.rotation = vec3(0, 0, 0);
-    transform.scale = vec3(1, 1, 1);
-
-    entt::entity entity1 = _updateFramework.gameRegistry.create();
-
-    GameEntityInfo& gameEntityInfo1 = _updateFramework.gameRegistry.assign<GameEntityInfo>(entity1);
-    gameEntityInfo1.type = GameEntityType::GAMEOBJECT;
-    gameEntityInfo1.entryId = 1;
-
-    Transform& transform1 = _updateFramework.gameRegistry.assign<Transform>(entity1);
-    transform1.position = vec3(16543.3320f, 0.0f, 26143.3320f);
-    transform1.rotation = vec3(0, 0, 0);
-    transform1.scale = vec3(1, 1, 1);*/
 
     Timer timer;
     f32 targetDelta = 1.0f / 60.0f;
@@ -179,11 +152,6 @@ void EngineLoop::Run()
     exitMessage.code = MSG_OUT_EXIT_CONFIRM;
     _outputQueue.enqueue(exitMessage);
 }
-void EngineLoop::RunIoService()
-{
-    asio::io_service::work ioWork(*_network.asioService.get());
-    _network.asioService->run();
-}
 
 bool EngineLoop::Update()
 {
@@ -221,7 +189,7 @@ void EngineLoop::SetupUpdateFramework()
     tf::Framework& framework = _updateFramework.framework;
     entt::registry& gameRegistry = _updateFramework.gameRegistry;
 
-    ServiceLocator::SetGameRegistry(&gameRegistry);
+    ServiceLocator::SetRegistry(&gameRegistry);
     SetMessageHandler();
 
     // @TODO: Temporary fix to allow taskflow to run multiple tasks at the same time when using Entt to construct views
@@ -255,7 +223,8 @@ void EngineLoop::SetMessageHandler()
     auto messageHandler = new MessageHandler();
     ServiceLocator::SetNetworkMessageHandler(messageHandler);
 
-    Server::GeneralHandlers::Setup(messageHandler);
+    Network::AuthHandlers::Setup(messageHandler);
+    Network::GeneralHandlers::Setup(messageHandler);
 }
 void EngineLoop::UpdateSystems()
 {

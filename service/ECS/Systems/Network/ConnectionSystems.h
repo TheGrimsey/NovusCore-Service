@@ -1,9 +1,14 @@
 #pragma once
 #include <asio.hpp>
 #include <entity/fwd.hpp>
+#include <Utils/ConcurrentQueue.h>
 
 class NetworkServer;
 class BaseSocket;
+namespace moddycamel
+{
+    class ConcurrentQueue;
+}
 class ConnectionUpdateSystem
 {
 public:

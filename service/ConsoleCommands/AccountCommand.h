@@ -39,12 +39,12 @@ void AccountCommand(EngineLoop& engineLoop, std::vector<std::string> subCommands
     std::string username = subCommands[0];
     std::string password = subCommands[1];
 
-    std::shared_ptr<ByteBuffer> sBuffer = ByteBuffer::Borrow<4>();
-    std::shared_ptr<ByteBuffer> vBuffer = ByteBuffer::Borrow<256>();
+    std::shared_ptr<Bytebuffer> sBuffer = Bytebuffer::Borrow<4>();
+    std::shared_ptr<Bytebuffer> vBuffer = Bytebuffer::Borrow<256>();
     SRPUtils::CreateAccount(username.c_str(), password.c_str(), sBuffer.get(), vBuffer.get());
 
-    std::string sHex = StringUtils::BytesToHexStr(sBuffer->GetDataPointer(), sBuffer->Size);
-    std::string vHex = StringUtils::BytesToHexStr(vBuffer->GetDataPointer(), vBuffer->Size);
+    std::string sHex = StringUtils::BytesToHexStr(sBuffer->GetDataPointer(), sBuffer->size);
+    std::string vHex = StringUtils::BytesToHexStr(vBuffer->GetDataPointer(), vBuffer->size);
 
     // TODO: Move DBConnection to suitable place where we won't have to recreate connections 24/7
     DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
@@ -56,4 +56,6 @@ void AccountCommand(EngineLoop& engineLoop, std::vector<std::string> subCommands
 
     conn.Execute(ss.str());
     conn.Close();
+
+    NC_LOG_SUCCESS("Created account %s", username.c_str());
 }

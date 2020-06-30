@@ -43,9 +43,17 @@ struct FrameworkRegistryPair
     tf::Taskflow taskflow;
 };
 
+enum class NetworkHostMode : u8
+{
+    LOCAL,
+    REMOTE
+};
+
 struct NetworkPair
 {
-    std::shared_ptr<NetworkServer> server;
+    NetworkHostMode hostMode = NetworkHostMode::LOCAL;
+
+    std::shared_ptr<NetworkServer> internalServer;
     std::shared_ptr<asio::io_service> asioService;
 };
 

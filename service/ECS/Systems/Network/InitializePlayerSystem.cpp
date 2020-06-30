@@ -15,8 +15,8 @@
 void InitializePlayerSystem::Update(entt::registry& registry)
 {
     // This is a very naive approach, primarily due to the fact that we are currently limited to just sending 8192 bytes at a time.
-    std::shared_ptr<ByteBuffer> buffer = ByteBuffer::Borrow<8192>();
-    std::shared_ptr<ByteBuffer> initialConnectionBuffer = ByteBuffer::Borrow<8192>();
+    std::shared_ptr<Bytebuffer> buffer = Bytebuffer::Borrow<8192>();
+    std::shared_ptr<Bytebuffer> initialConnectionBuffer = Bytebuffer::Borrow<8192>();
 
     auto initialConnectionView = registry.view<ConnectionComponent, InitializeWorldState, JustSpawned>();
     auto connectionView = registry.view<ConnectionComponent, InitializedConnection>();
@@ -28,7 +28,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
         {
             buffer->Put(Opcode::SMSG_CREATE_ENTITY);
 
-            size_t sizeOffset = buffer->WrittenData;
+            size_t sizeOffset = buffer->writtenData;
             buffer->PutU16(0);
 
             u16 payloadSize = EntityUtils::Serialize(entity, gameEntityInfo, transform, buffer);
@@ -44,7 +44,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
             {
                 initialConnectionBuffer->Put(Opcode::SMSG_CREATE_ENTITY);
 
-                size_t sizeOffset = initialConnectionBuffer->WrittenData;
+                size_t sizeOffset = initialConnectionBuffer->writtenData;
                 initialConnectionBuffer->PutU16(0);
 
                 u16 payloadSize = EntityUtils::Serialize(entity, gameEntityInfo, transform, initialConnectionBuffer);
@@ -58,7 +58,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
                     buffer->Put(Opcode::SMSG_UPDATE_ENTITY);
                     buffer->PutU16(40);
 
-                    buffer->Put(entity);
+                    buffer->PutEnttId(entity);
                     buffer->Put(transform.position);
                     buffer->Put(transform.rotation);
                     buffer->Put(transform.scale);
@@ -68,7 +68,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
             }
         });
 
-    if (!connectionView.empty() && buffer->WrittenData)
+    if (!connectionView.empty() && buffer->writtenData)
     {
         connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializedConnection&)
             {
@@ -76,7 +76,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
             });
     }
 
-    if (!initialConnectionView.empty() && initialConnectionBuffer->WrittenData)
+    if (!initialConnectionView.empty() && initialConnectionBuffer->writtenData)
     {
         initialConnectionView.each([&registry, &initialConnectionBuffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializeWorldState& initializeWorldState, JustSpawned& justSpawned)
             {

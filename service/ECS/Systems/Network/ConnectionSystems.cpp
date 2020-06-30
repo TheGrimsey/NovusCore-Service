@@ -2,11 +2,14 @@
 #include <entt.hpp>
 #include <Networking/MessageHandler.h>
 #include <Networking/NetworkServer.h>
+#include <Networking/PacketUtils.h>
 #include "../../Components/Singletons/TimeSingleton.h"
+#include "../../Components/Network/ConnectionDeferredSingleton.h"
+#include "../../Components/Network/LoadBalanceSingleton.h"
 #include "../../Components/Network/Authentication.h"
 #include "../../Components/Network/ConnectionComponent.h"
-#include "../../Components/Network/ConnectionDeferredSingleton.h"
 #include "../../Components/Network/InitializedConnection.h"
+#include "../../Components/Network/HasServerInformation.h"
 #include "../../../Utils/ServiceLocator.h"
 #include <tracy/Tracy.hpp>
 
@@ -21,23 +24,21 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
     auto view = registry.view<ConnectionComponent>();
     view.each([&registry, &messageHandler, deltaTime](const auto, ConnectionComponent& connection)
     {
-                NetworkPacket* packet;
+                std::shared_ptr<NetworkPacket> packet;
             while (connection.packetQueue.try_dequeue(packet))
             {
-                if (!messageHandler->CallHandler(connection.connection, packet))
+#ifdef NC_Debug
+                NC_LOG_SUCCESS("[Network/Socket]: CMD: %u, Size: %u", packet->header.opcode, packet->header.size);
+#endif // NC_Debug
+
+                if (!messageHandler->CallHandler(connection.connection, packet.get()))
                 {
-                    connection.packetQueue.enqueue(packet);
-                    continue;
-                }
-
-                delete packet;
-
-                // We might close the socket during a handler
-                if (connection.connection->IsClosed())
+                    connection.connection->Close(asio::error::shut_down);
                     return;
+                }
             }
 
-            if (connection.lowPriorityBuffer->WrittenData)
+            if (connection.lowPriorityBuffer->writtenData)
             {
                 connection.lowPriorityTimer += deltaTime;
                 if (connection.lowPriorityTimer >= LOW_PRIORITY_TIME)
@@ -47,7 +48,7 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
                     connection.lowPriorityBuffer->Reset();
                 }
             }
-            if (connection.mediumPriorityBuffer->WrittenData)
+            if (connection.mediumPriorityBuffer->writtenData)
             {
                 connection.mediumPriorityTimer += deltaTime;
                 if (connection.mediumPriorityTimer >= MEDIUM_PRIORITY_TIME)
@@ -57,7 +58,7 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
                     connection.mediumPriorityBuffer->Reset();
                 }
             }
-            if (connection.highPriorityBuffer->WrittenData)
+            if (connection.highPriorityBuffer->writtenData)
             {
                 connection.connection->Send(connection.highPriorityBuffer.get());
                 connection.highPriorityBuffer->Reset();
@@ -65,17 +66,22 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
     });
 }
 
-void ConnectionUpdateSystem::HandleConnection(NetworkServer* server, asio::ip::tcp::socket* socket, const asio::error_code& error)
+void ConnectionUpdateSystem::HandleConnection(NetworkServer* internalServer, asio::ip::tcp::socket* socket, const asio::error_code& error)
 {
     if (!error)
     {
+#ifdef NC_Debug
+        NC_LOG_SUCCESS("[Network/Socket]: Client connected from (%s)", socket->remote_endpoint().address().to_string().c_str());
+#endif // NC_Debug
+
         socket->non_blocking(true);
         socket->set_option(asio::socket_base::send_buffer_size(NETWORK_BUFFER_SIZE));
         socket->set_option(asio::socket_base::receive_buffer_size(NETWORK_BUFFER_SIZE));
         socket->set_option(asio::ip::tcp::no_delay(true));
 
-        entt::registry* gameRegistry = ServiceLocator::GetGameRegistry();
-        gameRegistry->ctx<ConnectionDeferredSingleton>().newConnectionQueue.enqueue(socket);
+        entt::registry* registry = ServiceLocator::GetRegistry();
+        auto& connectionDeferredSingleton = registry->ctx<ConnectionDeferredSingleton>();
+        connectionDeferredSingleton.newConnectionQueue.enqueue(socket);
     }
 }
 
@@ -83,11 +89,11 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
 {
     NetworkClient* client = static_cast<NetworkClient*>(socket);
 
-    std::shared_ptr<ByteBuffer> buffer = client->GetReceiveBuffer();
-    entt::registry* gameRegistry = ServiceLocator::GetGameRegistry();
+    std::shared_ptr<Bytebuffer> buffer = client->GetReceiveBuffer();
+    entt::registry* registry = ServiceLocator::GetRegistry();
 
-    entt::entity entity = static_cast<entt::entity>(client->GetIdentity());
-    ConnectionComponent& connectionComponent = gameRegistry->get<ConnectionComponent>(entity);
+    entt::entity entity = static_cast<entt::entity>(client->GetEntityId());
+    ConnectionComponent& connectionComponent = registry->get<ConnectionComponent>(entity);
 
     while (buffer->GetActiveSize())
     {
@@ -99,12 +105,11 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
 
         if (size > NETWORK_BUFFER_SIZE)
         {
-
             client->Close(asio::error::shut_down);
             return;
         }
 
-        NetworkPacket* packet = new NetworkPacket();
+        std::shared_ptr<NetworkPacket> packet = NetworkPacket::Borrow();
         {
             // Header
             {
@@ -116,9 +121,9 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
             {
                 if (size)
                 {
-                    packet->payload = ByteBuffer::Borrow<NETWORK_BUFFER_SIZE>();
-                    packet->payload->Size = size;
-                    packet->payload->WrittenData = size;
+                    packet->payload = Bytebuffer::Borrow<NETWORK_BUFFER_SIZE>();
+                    packet->payload->size = size;
+                    packet->payload->writtenData = size;
                     std::memcpy(packet->payload->GetDataPointer(), buffer->GetReadPointer(), size);
                 }
             }
@@ -126,7 +131,7 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
             connectionComponent.packetQueue.enqueue(packet);
         }
 
-        buffer->ReadData += size;
+        buffer->readData += size;
     }
 
     client->Listen();
@@ -134,10 +139,17 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
 
 void ConnectionUpdateSystem::HandleDisconnect(BaseSocket* socket)
 {
-    NetworkClient* client = static_cast<NetworkClient*>(socket);
+#ifdef NC_Debug
+    NC_LOG_WARNING("[Network/Socket]: Client disconnected from (%s)", socket->socket()->remote_endpoint().address().to_string().c_str());
+#endif // NC_Debug
 
-    entt::registry* gameRegistry = ServiceLocator::GetGameRegistry();
-    gameRegistry->ctx<ConnectionDeferredSingleton>().droppedConnectionQueue.enqueue(client->GetIdentity());
+    entt::registry* registry = ServiceLocator::GetRegistry();
+    auto& connectionDeferredSingleton = registry->ctx<ConnectionDeferredSingleton>();
+
+    NetworkClient* client = static_cast<NetworkClient*>(socket);
+    entt::entity entity = static_cast<entt::entity>(client->GetEntityId());
+
+    connectionDeferredSingleton.droppedConnectionQueue.enqueue(entity);
 }
 
 void ConnectionDeferredSystem::Update(entt::registry& registry)
@@ -156,6 +168,7 @@ void ConnectionDeferredSystem::Update(entt::registry& registry)
 
             Authentication* authentication = &registry.assign<Authentication>(entity);
 
+            connectionComponent->connection->SetStatus(ConnectionStatus::AUTH_CHALLENGE);
             connectionComponent->connection->SetReadHandler(std::bind(&ConnectionUpdateSystem::HandleRead, std::placeholders::_1));
             connectionComponent->connection->SetDisconnectHandler(std::bind(&ConnectionUpdateSystem::HandleDisconnect, std::placeholders::_1));
             connectionComponent->connection->Listen();
@@ -166,29 +179,39 @@ void ConnectionDeferredSystem::Update(entt::registry& registry)
 
     if (connectionDeferredSingleton.droppedConnectionQueue.size_approx() > 0)
     {
-        std::shared_ptr<ByteBuffer> buffer = ByteBuffer::Borrow<8192>();
-        u64 entityid;
-        while (connectionDeferredSingleton.droppedConnectionQueue.try_dequeue(entityid))
+        entt::entity entity;
+        while (connectionDeferredSingleton.droppedConnectionQueue.try_dequeue(entity))
         {
-            entt::entity entity = static_cast<entt::entity>(entityid);
+            if (registry.has<HasServerInformation>(entity))
+            {
+                LoadBalanceSingleton& loadBalanceSingleton = registry.ctx<LoadBalanceSingleton>();
+                HasServerInformation& hasServerInformation = registry.get<HasServerInformation>(entity);
 
-            buffer->Put(Opcode::SMSG_DELETE_ENTITY);
-            buffer->PutU16(sizeof(ENTT_ID_TYPE));
-            buffer->Put(entity);
+                loadBalanceSingleton.Remove(hasServerInformation.type, hasServerInformation.entity);
+
+                auto& loadBalancers = loadBalanceSingleton.GetLoadBalancers();
+                if (loadBalancers.size() > 0)
+                {
+                    std::shared_ptr<Bytebuffer> buffer = Bytebuffer::Borrow<128>();
+                    if (PacketUtils::Write_SMSG_SEND_REMOVE_INTERNAL_SERVER_INFO(buffer, hasServerInformation.entity, hasServerInformation.type))
+                    {
+                        for (const ServerInformation& serverInformation : loadBalancers)
+                        {
+                            if (entity == serverInformation.entity)
+                                continue;
+
+                            ConnectionComponent& serverConnection = registry.get<ConnectionComponent>(serverInformation.entity);
+                            serverConnection.AddPacket(buffer);
+                        }
+                    }
+                    else
+                    {
+                        assert(false);
+                    }
+                }
+            }
 
             registry.destroy(entity);
-        }
-
-        auto connectionView = registry.view<ConnectionComponent, InitializedConnection>();
-        if (connectionView.size() > 0)
-        {
-            if (buffer->WrittenData)
-            {
-                connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent, InitializedConnection&)
-                    {
-                        connectionComponent.connection->Send(buffer.get());
-                    });
-            }
         }
     }
 }

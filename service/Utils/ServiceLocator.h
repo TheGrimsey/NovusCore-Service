@@ -24,17 +24,22 @@
 #pragma once
 #include <NovusTypes.h>
 #include <entt.hpp>
+#include <Utils/ConcurrentQueue.h>
+#include <Utils/Message.h>
 
 class MessageHandler;
 class ServiceLocator
 {
 public:
-    static entt::registry* GetGameRegistry() { return _gameRegistry; }
-    static void SetGameRegistry(entt::registry* registry);
+    static entt::registry* GetRegistry() { return _registry; }
+    static void SetRegistry(entt::registry* registry);
+    static moodycamel::ConcurrentQueue<Message>* GetInputQueue() { return _inputQueue; }
+    static void SetInputQueue(moodycamel::ConcurrentQueue<Message>* inputQueue);
     static MessageHandler* GetNetworkMessageHandler() { return _networkMessageHandler; }
     static void SetNetworkMessageHandler(MessageHandler* serverMessageHandler);
 
 private:
-    static entt::registry* _gameRegistry;
+    static entt::registry* _registry;
+    static moodycamel::ConcurrentQueue<Message>* _inputQueue;
     static MessageHandler* _networkMessageHandler;
 };
