@@ -4,13 +4,15 @@
 #include <entity/fwd.hpp>
 #include <vector>
 
+#pragma pack(push, 1)
 struct ServerInformation
 {
     entt::entity entity = entt::null;
-    AddressType type;
-    u32 address;
-    u16 port;
+    AddressType type = AddressType::INVALID;
+    u32 address = 0;
+    u16 port = 0;
 };
+#pragma pack(pop)
 struct LoadBalanceSingleton
 {
     LoadBalanceSingleton()
