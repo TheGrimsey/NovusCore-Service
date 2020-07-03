@@ -14,13 +14,13 @@ namespace Network
 {
     void GeneralHandlers::Setup(MessageHandler* messageHandler)
     {
-        messageHandler->SetMessageHandler(Opcode::CMSG_CONNECTED, { ConnectionStatus::AUTH_SUCCESS, sizeof(AddressType) + 4 + 2, GeneralHandlers::CMSG_CONNECTED });
-        messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_ADDRESS, { ConnectionStatus::CONNECTED, sizeof(AddressType), GeneralHandlers::MSG_REQUEST_ADDRESS });
-        messageHandler->SetMessageHandler(Opcode::SMSG_SEND_ADDRESS, { ConnectionStatus::CONNECTED, 1, GeneralHandlers::SMSG_SEND_ADDRESS });
-        messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_INTERNAL_SERVER_INFO, { ConnectionStatus::CONNECTED, 0, GeneralHandlers::MSG_REQUEST_INTERNAL_SERVER_INFO });
+        messageHandler->SetMessageHandler(Opcode::CMSG_CONNECTED, { ConnectionStatus::AUTH_SUCCESS, sizeof(AddressType) + 4 + 2, GeneralHandlers::HandleConnected });
+        messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_ADDRESS, { ConnectionStatus::CONNECTED, sizeof(AddressType), GeneralHandlers::HandleRequestAddress });
+        messageHandler->SetMessageHandler(Opcode::SMSG_SEND_ADDRESS, { ConnectionStatus::CONNECTED, 1, GeneralHandlers::HandleSendAddress });
+        messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_INTERNAL_SERVER_INFO, { ConnectionStatus::CONNECTED, 0, GeneralHandlers::HandleRequestServerInfo });
     }
 
-    bool GeneralHandlers::CMSG_CONNECTED(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
+    bool GeneralHandlers::HandleConnected(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
     {
         // (AddressType type) is used to identify what kind of server just connected to us
         AddressType type;
@@ -112,7 +112,7 @@ namespace Network
         client->SetStatus(ConnectionStatus::CONNECTED);
         return true;
     }
-    bool GeneralHandlers::MSG_REQUEST_ADDRESS(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
+    bool GeneralHandlers::HandleRequestAddress(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
     {
         AddressType type;
         if (!packet->payload->Get(type) ||
@@ -144,7 +144,7 @@ namespace Network
 
         return true;
     }
-    bool GeneralHandlers::SMSG_SEND_ADDRESS(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
+    bool GeneralHandlers::HandleSendAddress(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
     {
         u8 status = 0;
         u32 address = 0;
@@ -176,7 +176,7 @@ namespace Network
         connection.AddPacket(buffer);
         return true;
     }
-    bool GeneralHandlers::MSG_REQUEST_INTERNAL_SERVER_INFO(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
+    bool GeneralHandlers::HandleRequestServerInfo(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
     {
         entt::registry* registry = ServiceLocator::GetRegistry();
         LoadBalanceSingleton& loadBalanceSingleton = registry->ctx<LoadBalanceSingleton>();

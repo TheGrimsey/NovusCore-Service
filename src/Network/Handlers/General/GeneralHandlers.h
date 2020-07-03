@@ -10,9 +10,9 @@ namespace Network
     {
     public:
         static void Setup(MessageHandler*);
-        static bool CMSG_CONNECTED(std::shared_ptr<NetworkClient>, NetworkPacket*);
-        static bool MSG_REQUEST_ADDRESS(std::shared_ptr<NetworkClient>, NetworkPacket*);
-        static bool SMSG_SEND_ADDRESS(std::shared_ptr<NetworkClient>, NetworkPacket*);
-        static bool MSG_REQUEST_INTERNAL_SERVER_INFO(std::shared_ptr<NetworkClient>, NetworkPacket*);
+        static bool HandleConnected(std::shared_ptr<NetworkClient>, NetworkPacket*);
+        static bool HandleRequestAddress(std::shared_ptr<NetworkClient>, NetworkPacket*);
+        static bool HandleSendAddress(std::shared_ptr<NetworkClient>, NetworkPacket*);
+        static bool HandleRequestServerInfo(std::shared_ptr<NetworkClient>, NetworkPacket*);
     };
 }
