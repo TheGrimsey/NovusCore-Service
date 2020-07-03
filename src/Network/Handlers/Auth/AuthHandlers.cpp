@@ -5,8 +5,8 @@
 #include <Networking/NetworkClient.h>
 #include <Utils/ByteBuffer.h>
 #include <Utils/StringUtils.h>
-#include <Database/DBConnection.h>
 #include "../../../Utils/ServiceLocator.h"
+#include "../../../ECS/Components/Singletons/DBSingleton.h"
 #include "../../../ECS/Components/Network/Authentication.h"
 
 // @TODO: Remove Temporary Includes when they're no longer needed
@@ -34,13 +34,12 @@ namespace Network
         std::shared_ptr<Bytebuffer> sBuffer = Bytebuffer::Borrow<4>();
         std::shared_ptr<Bytebuffer> vBuffer = Bytebuffer::Borrow<256>();
 
-        DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
+        DBSingleton& dbSingleton = registry->ctx<DBSingleton>();
 
         std::stringstream ss;
         ss << "SELECT salt, verifier FROM accounts WHERE username='" << authentication.username << "';";
 
-        std::shared_ptr<QueryResult> result = conn.Query(ss.str());
-        conn.Close();
+        std::shared_ptr<QueryResult> result = dbSingleton.auth.Query(ss.str());
 
         // If we found no account with the provided username we "temporarily" close the connection
         // TODO: Generate Random Salt & Verifier (Shorter length?) and "fake" logon challenge to not give away if an account exists or not

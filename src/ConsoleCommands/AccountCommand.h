@@ -26,7 +26,10 @@
 #include <Utils/srp.h>
 #include <Utils/StringUtils.h>
 #include <Database/DBConnection.h>
+#include <entt.hpp>
 #include "../EngineLoop.h"
+#include "../ECS/Components/Singletons/DBSingleton.h"
+#include "../Utils/ServiceLocator.h"
 
 void AccountCommand(EngineLoop& engineLoop, std::vector<std::string> subCommands)
 {
@@ -46,16 +49,14 @@ void AccountCommand(EngineLoop& engineLoop, std::vector<std::string> subCommands
     std::string sHex = StringUtils::BytesToHexStr(sBuffer->GetDataPointer(), sBuffer->size);
     std::string vHex = StringUtils::BytesToHexStr(vBuffer->GetDataPointer(), vBuffer->size);
 
-    // TODO: Move DBConnection to suitable place where we won't have to recreate connections 24/7
-    DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
+    entt::registry* registry = ServiceLocator::GetRegistry();
+    DBSingleton& dbSingleton = registry->ctx<DBSingleton>();
 
     std::stringstream ss;
 
     ss << "INSERT INTO `accounts` (`username`, `salt`, `verifier`) ";
     ss << "VALUES('" << username << "', '" << sHex << "', '" << vHex << "');";
 
-    conn.Execute(ss.str());
-    conn.Close();
-
+    dbSingleton.auth.Execute(ss.str());
     NC_LOG_SUCCESS("Created account %s", username.c_str());
 }

@@ -9,6 +9,7 @@
 
 // Component Singletons
 #include "ECS/Components/Singletons/TimeSingleton.h"
+#include "ECS/Components/Singletons/DBSingleton.h"
 #include "ECS/Components/Network/ConnectionDeferredSingleton.h"
 #include "ECS/Components/Network/LoadBalanceSingleton.h"
 
@@ -84,6 +85,9 @@ void EngineLoop::Run()
     _updateFramework.gameRegistry.create();
 
     TimeSingleton& timeSingleton = _updateFramework.gameRegistry.set<TimeSingleton>();
+    DBSingleton& dbSingleton = _updateFramework.gameRegistry.set<DBSingleton>();
+    dbSingleton.auth.Connect("localhost", 3306, "root", "ascent", "novuscore", 0);
+
     ConnectionDeferredSingleton& connectionDeferredSingleton = _updateFramework.gameRegistry.set<ConnectionDeferredSingleton>();
     LoadBalanceSingleton& loadBalanceSingleton = _updateFramework.gameRegistry.set<LoadBalanceSingleton>();
 
@@ -91,24 +95,6 @@ void EngineLoop::Run()
 
     _network.internalServer->SetConnectionHandler(std::bind(&ConnectionUpdateSystem::HandleConnection, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     _network.internalServer->Start();
-
-    /*DBConnection conn("localhost", 3306, "root", "ascent", "novuscore", 0, 2);
-    
-    for (i32 i = 0; i < 11; i++)
-    {
-        conn.QueryAsync("SELECT id, value, date FROM test",
-            [&](std::shared_ptr<QueryResult> result)
-            {
-                while (result->GetNextRow())
-                {
-                    const Field& idField = result->GetField(0);
-                    const Field& valueField = result->GetField(1);
-                    const Field& dateField = result->GetField(2);
-
-                    PrintMessage("WorkerThread completed query");
-                }
-            });
-    }*/
 
     Timer timer;
     f32 targetDelta = 1.0f / 60.0f;
