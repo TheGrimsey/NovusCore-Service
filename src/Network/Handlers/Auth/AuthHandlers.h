@@ -10,7 +10,7 @@ namespace Network
     {
     public:
         static void Setup(MessageHandler*);
-        static bool ClientChallengeHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
-        static bool ClientHandshakeHandler(std::shared_ptr<NetworkClient>, NetworkPacket*);
+        static bool ClientChallengeHandler(std::shared_ptr<NetworkClient>, std::shared_ptr<NetworkPacket>&);
+        static bool ClientHandshakeHandler(std::shared_ptr<NetworkClient>, std::shared_ptr<NetworkPacket>&);
     };
 }

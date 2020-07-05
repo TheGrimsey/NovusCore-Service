@@ -47,7 +47,7 @@ struct ConnectionComponent
         // Should we send priority buffer's content before we add this due to size constraints
         if (bufferToUse->GetSpace() < bufferToUse->writtenData)
         {
-            connection->Send(bufferToUse.get());
+            connection->Send(bufferToUse);
             bufferToUse->Reset();
 
             if (bufferToUse == lowPriorityBuffer)

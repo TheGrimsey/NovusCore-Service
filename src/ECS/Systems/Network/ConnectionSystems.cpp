@@ -31,7 +31,7 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
                 NC_LOG_SUCCESS("[Network/Socket]: CMD: %u, Size: %u", packet->header.opcode, packet->header.size);
 #endif // NC_Debug
 
-                if (!messageHandler->CallHandler(connection.connection, packet.get()))
+                if (!messageHandler->CallHandler(connection.connection, packet))
                 {
                     connection.connection->Close(asio::error::shut_down);
                     return;
@@ -44,7 +44,7 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
                 if (connection.lowPriorityTimer >= LOW_PRIORITY_TIME)
                 {
                     connection.lowPriorityTimer = 0;
-                    connection.connection->Send(connection.lowPriorityBuffer.get());
+                    connection.connection->Send(connection.lowPriorityBuffer);
                     connection.lowPriorityBuffer->Reset();
                 }
             }
@@ -54,13 +54,13 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
                 if (connection.mediumPriorityTimer >= MEDIUM_PRIORITY_TIME)
                 {
                     connection.mediumPriorityTimer = 0;
-                    connection.connection->Send(connection.mediumPriorityBuffer.get());
+                    connection.connection->Send(connection.mediumPriorityBuffer);
                     connection.mediumPriorityBuffer->Reset();
                 }
             }
             if (connection.highPriorityBuffer->writtenData)
             {
-                connection.connection->Send(connection.highPriorityBuffer.get());
+                connection.connection->Send(connection.highPriorityBuffer);
                 connection.highPriorityBuffer->Reset();
             }
     });

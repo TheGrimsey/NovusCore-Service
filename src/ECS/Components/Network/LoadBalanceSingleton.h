@@ -119,7 +119,7 @@ struct LoadBalanceSingleton
             serverInformation = authServers[authIndex++];
 
             // Wrap index around if needed
-            if (authIndex > numOf)
+            if (authIndex == numOf)
                 authIndex = 0;
         }
         else if constexpr (type == AddressType::REALM)
@@ -131,7 +131,7 @@ struct LoadBalanceSingleton
             serverInformation = realmServers[realmIndex++];
 
             // Wrap index around if needed
-            if (realmIndex > numOf)
+            if (realmIndex == numOf)
                 realmIndex = 0;
         }
         else if constexpr (type == AddressType::WORLD)
@@ -143,7 +143,7 @@ struct LoadBalanceSingleton
             serverInformation = worldServers[worldIndex++];
 
             // Wrap index around if needed
-            if (worldIndex > numOf)
+            if (worldIndex == numOf)
                 worldIndex = 0;
         }
         else if constexpr (type == AddressType::INSTANCE)
@@ -155,7 +155,7 @@ struct LoadBalanceSingleton
             serverInformation = instanceServers[instanceIndex++];
 
             // Wrap index around if needed
-            if (instanceIndex > numOf)
+            if (instanceIndex == numOf)
                 instanceIndex = 0;
         }
         else if constexpr (type == AddressType::CHAT)
@@ -167,7 +167,7 @@ struct LoadBalanceSingleton
             serverInformation = chatServers[chatIndex++];
 
             // Wrap index around if needed
-            if (chatIndex > numOf)
+            if (chatIndex == numOf)
                 chatIndex = 0;
         }
         else if constexpr (type == AddressType::LOADBALANCE)
@@ -179,7 +179,7 @@ struct LoadBalanceSingleton
             serverInformation = loadBalancers[loadBalanceIndex++];
 
             // Wrap index around if needed
-            if (loadBalanceIndex > numOf)
+            if (loadBalanceIndex == numOf)
                 loadBalanceIndex = 0;
         }
         else if constexpr (type == AddressType::REGION)
@@ -191,7 +191,7 @@ struct LoadBalanceSingleton
             serverInformation = regionServers[realmIndex++];
 
             // Wrap index around if needed
-            if (realmIndex > numOf)
+            if (realmIndex == numOf)
                 realmIndex = 0;
         }
 

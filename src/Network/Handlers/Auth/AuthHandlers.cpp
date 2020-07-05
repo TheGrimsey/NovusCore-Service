@@ -16,10 +16,10 @@ namespace Network
 {
     void AuthHandlers::Setup(MessageHandler* messageHandler)
     {
-        messageHandler->SetMessageHandler(Opcode::CMSG_LOGON_CHALLENGE, { ConnectionStatus::AUTH_CHALLENGE, 256 + 1, AuthHandlers::ClientChallengeHandler });
+        messageHandler->SetMessageHandler(Opcode::CMSG_LOGON_CHALLENGE, { ConnectionStatus::AUTH_CHALLENGE, 256 + 1, 256 + 1 + 32, AuthHandlers::ClientChallengeHandler });
         messageHandler->SetMessageHandler(Opcode::CMSG_LOGON_HANDSHAKE, { ConnectionStatus::AUTH_HANDSHAKE, sizeof(ClientLogonHandshake), AuthHandlers::ClientHandshakeHandler });
     }
-    bool AuthHandlers::ClientChallengeHandler(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
+    bool AuthHandlers::ClientChallengeHandler(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
     {
         std::string inUsername;
         u8 aBuffer[256];
@@ -83,12 +83,12 @@ namespace Network
 
         u16 payloadSize = serverChallenge.Serialize(buffer);
         buffer->Put<u16>(payloadSize, 2);
-        client->Send(buffer.get());
+        client->Send(buffer);
 
         client->SetStatus(ConnectionStatus::AUTH_HANDSHAKE);
         return true;
     }
-    bool AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient> client, NetworkPacket* packet)
+    bool AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
     {
         ClientLogonHandshake logonResponse;
         logonResponse.Deserialize(packet->payload);
@@ -117,7 +117,7 @@ namespace Network
 
         u16 payloadSize = serverChallenge.Serialize(buffer);
         buffer->Put<u16>(payloadSize, 2);
-        client->Send(buffer.get());
+        client->Send(buffer);
 
         client->SetStatus(ConnectionStatus::AUTH_SUCCESS);
         return true;
