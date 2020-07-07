@@ -14,7 +14,7 @@ namespace Network
 {
     void GeneralHandlers::Setup(MessageHandler* messageHandler)
     {
-        messageHandler->SetMessageHandler(Opcode::CMSG_CONNECTED, { ConnectionStatus::AUTH_SUCCESS, sizeof(AddressType) + 4 + 2, GeneralHandlers::HandleConnected });
+        messageHandler->SetMessageHandler(Opcode::CMSG_CONNECTED, { ConnectionStatus::AUTH_SUCCESS, sizeof(AddressType) + 1 + 4 + 2, GeneralHandlers::HandleConnected });
         messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_ADDRESS, { ConnectionStatus::CONNECTED, sizeof(AddressType), 128, GeneralHandlers::HandleRequestAddress });
         messageHandler->SetMessageHandler(Opcode::SMSG_SEND_ADDRESS, { ConnectionStatus::CONNECTED, 1, 128, GeneralHandlers::HandleSendAddress });
         messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_INTERNAL_SERVER_INFO, { ConnectionStatus::CONNECTED, 0, GeneralHandlers::HandleRequestServerInfo });
@@ -24,6 +24,7 @@ namespace Network
     {
         // (AddressType type) is used to identify what kind of server just connected to us
         AddressType type;
+        u8 realmId;
         u32 address;
         u16 port;
         if (!packet->payload->Get(type) ||
@@ -31,6 +32,9 @@ namespace Network
         {
             return false;
         }
+
+        if (!packet->payload->GetU8(realmId))
+            return false;
 
         if (!packet->payload->GetU32(address))
             return false;
@@ -46,10 +50,12 @@ namespace Network
 
         hasServerInformation.entity = entity;
         hasServerInformation.type = type;
+        hasServerInformation.realmId = realmId;
 
         ServerInformation serverInformation;
         serverInformation.entity = entity;
         serverInformation.type = type;
+        serverInformation.realmId = realmId;
         serverInformation.address = address;
         serverInformation.port = port;
 
@@ -97,7 +103,7 @@ namespace Network
             if (loadBalancers.size() > 0)
             {
                 std::shared_ptr<Bytebuffer> bufferAddServer = Bytebuffer::Borrow<128>();
-                if (!PacketUtils::Write_SMSG_SEND_ADD_INTERNAL_SERVER_INFO(bufferAddServer, serverInformation.entity, serverInformation.type, serverInformation.address, serverInformation.port))
+                if (!PacketUtils::Write_SMSG_SEND_ADD_INTERNAL_SERVER_INFO(bufferAddServer, serverInformation.entity, serverInformation.type, serverInformation.realmId, serverInformation.address, serverInformation.port))
                     return false;
 
                 for (const ServerInformation& serverInformation : loadBalancers)

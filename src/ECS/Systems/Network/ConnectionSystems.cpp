@@ -193,7 +193,7 @@ void ConnectionDeferredSystem::Update(entt::registry& registry)
                 if (loadBalancers.size() > 0)
                 {
                     std::shared_ptr<Bytebuffer> buffer = Bytebuffer::Borrow<128>();
-                    if (PacketUtils::Write_SMSG_SEND_REMOVE_INTERNAL_SERVER_INFO(buffer, hasServerInformation.entity, hasServerInformation.type))
+                    if (PacketUtils::Write_SMSG_SEND_REMOVE_INTERNAL_SERVER_INFO(buffer, hasServerInformation.entity, hasServerInformation.type, hasServerInformation.realmId))
                     {
                         for (const ServerInformation& serverInformation : loadBalancers)
                         {

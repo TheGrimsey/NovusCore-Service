@@ -6,4 +6,5 @@ struct HasServerInformation
 {
     entt::entity entity = entt::null;
     AddressType type = AddressType::INVALID;
+    u8 realmId = 0;
 };
