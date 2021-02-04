@@ -45,7 +45,7 @@ namespace Network
         // TODO: Generate Random Salt & Verifier (Shorter length?) and "fake" logon challenge to not give away if an account exists or not
         if (result->GetAffectedRows() == 0)
         {
-            NC_LOG_WARNING("Unsuccessful Login for: %s", authentication.username.c_str());
+            DebugHandler::PrintWarning("Unsuccessful Login for: %s", authentication.username.c_str());
             return false;
         }
 
@@ -67,7 +67,7 @@ namespace Network
         // If "StartVerification" fails, we have either hit a bad memory allocation or a SRP-6a safety check, thus we should close the connection
         if (!authentication.srp.StartVerification(authentication.username, aBuffer))
         {
-            NC_LOG_WARNING("Unsuccessful Login for: %s", authentication.username.c_str());
+            DebugHandler::PrintWarning("Unsuccessful Login for: %s", authentication.username.c_str());
             return false;
         }
 
@@ -98,12 +98,12 @@ namespace Network
 
         if (!authentication.srp.VerifySession(logonResponse.M1))
         {
-            NC_LOG_WARNING("Unsuccessful Login for: %s", authentication.username.c_str());
+            DebugHandler::PrintWarning("Unsuccessful Login for: %s", authentication.username.c_str());
             return false;
         }
         else
         {
-            NC_LOG_SUCCESS("Successful Login for: %s", authentication.username.c_str());
+            DebugHandler::PrintSuccess("Successful Login for: %s", authentication.username.c_str());
         }
 
         // Update Key field in accounts table in the database here

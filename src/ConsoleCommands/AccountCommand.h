@@ -35,7 +35,7 @@ void AccountCommand(EngineLoop& engineLoop, std::vector<std::string> subCommands
 {
     if (subCommands.size() < 2)
     {
-        NC_LOG_ERROR("Account Commands takes the following parameters. (Username, Password)");
+        DebugHandler::PrintError("Account Commands takes the following parameters. (Username, Password)");
         return;
     }
 
@@ -58,5 +58,5 @@ void AccountCommand(EngineLoop& engineLoop, std::vector<std::string> subCommands
     ss << "VALUES('" << username << "', '" << sHex << "', '" << vHex << "');";
 
     dbSingleton.auth.Execute(ss.str());
-    NC_LOG_SUCCESS("Created account %s", username.c_str());
+    DebugHandler::PrintSuccess("Created account %s", username.c_str());
 }

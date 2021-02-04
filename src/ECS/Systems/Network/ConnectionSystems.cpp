@@ -28,7 +28,7 @@ void ConnectionUpdateSystem::Update(entt::registry& registry)
             while (connection.packetQueue.try_dequeue(packet))
             {
 #ifdef NC_Debug
-                NC_LOG_SUCCESS("[Network/Socket]: CMD: %u, Size: %u", packet->header.opcode, packet->header.size);
+                DebugHandler::PrintSuccess("[Network/Socket]: CMD: %u, Size: %u", packet->header.opcode, packet->header.size);
 #endif // NC_Debug
 
                 if (!messageHandler->CallHandler(connection.connection, packet))
@@ -71,7 +71,7 @@ void ConnectionUpdateSystem::HandleConnection(NetworkServer* internalServer, asi
     if (!error)
     {
 #ifdef NC_Debug
-        NC_LOG_SUCCESS("[Network/Socket]: Client connected from (%s)", socket->remote_endpoint().address().to_string().c_str());
+        DebugHandler::PrintSuccess("[Network/Socket]: Client connected from (%s)", socket->remote_endpoint().address().to_string().c_str());
 #endif // NC_Debug
 
         socket->non_blocking(true);
@@ -140,7 +140,7 @@ void ConnectionUpdateSystem::HandleRead(BaseSocket* socket)
 void ConnectionUpdateSystem::HandleDisconnect(BaseSocket* socket)
 {
 #ifdef NC_Debug
-    NC_LOG_WARNING("[Network/Socket]: Client disconnected from (%s)", socket->socket()->remote_endpoint().address().to_string().c_str());
+    DebugHandler::PrintWarning("[Network/Socket]: Client disconnected from (%s)", socket->socket()->remote_endpoint().address().to_string().c_str());
 #endif // NC_Debug
 
     entt::registry* registry = ServiceLocator::GetRegistry();
