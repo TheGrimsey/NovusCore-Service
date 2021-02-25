@@ -20,7 +20,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
 
     auto initialConnectionView = registry.view<ConnectionComponent, InitializeWorldState, JustSpawned>();
     auto connectionView = registry.view<ConnectionComponent, InitializedConnection>();
-    if (initialConnectionView.empty() && connectionView.empty())
+    if (initialConnectionView.size_hint() == 0 && connectionView.size_hint() == 0)
         return;
 
     auto newEntityView = registry.view<GameEntityInfo, Transform, JustSpawned>();
@@ -40,7 +40,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
     auto entitiesView = registry.view<GameEntityInfo, Transform>();
     entitiesView.each([&registry, &initialConnectionView, &connectionView, &buffer, &initialConnectionBuffer](const entt::entity& entity, GameEntityInfo& gameEntityInfo, Transform& transform)
         {
-            if (!initialConnectionView.empty())
+            if (initialConnectionView.size_hint())
             {
                 initialConnectionBuffer->Put(Opcode::SMSG_CREATE_ENTITY);
 
@@ -51,7 +51,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
                 initialConnectionBuffer->Put(payloadSize, sizeOffset);
             }
 
-            if (!connectionView.empty())
+            if (connectionView.size_hint())
             {
                 if (transform.isDirty)
                 {
@@ -68,7 +68,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
             }
         });
 
-    if (!connectionView.empty() && buffer->writtenData)
+    if (connectionView.size_hint() && buffer->writtenData)
     {
         connectionView.each([&registry, &buffer](const entt::entity& entity, ConnectionComponent& connectionComponent)
             {
@@ -76,7 +76,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
             });
     }
 
-    if (!initialConnectionView.empty() && initialConnectionBuffer->writtenData)
+    if (initialConnectionView.size_hint() && initialConnectionBuffer->writtenData)
     {
         initialConnectionView.each([&registry, &initialConnectionBuffer](const entt::entity& entity, ConnectionComponent& connectionComponent)
             {
@@ -87,7 +87,7 @@ void InitializePlayerSystem::Update(entt::registry& registry)
         registry.remove<InitializeWorldState, JustSpawned>(initialConnectionView.begin(), initialConnectionView.end());
     }
 
-    if (!newEntityView.empty())
+    if (newEntityView.size_hint())
     {
         registry.remove<JustSpawned>(newEntityView.begin(), newEntityView.end());
     }
