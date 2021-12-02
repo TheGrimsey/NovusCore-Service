@@ -27,7 +27,7 @@
 #include <Utils/ConcurrentQueue.h>
 #include <Utils/Message.h>
 
-class MessageHandler;
+class NetPacketHandler;
 class ServiceLocator
 {
 public:
@@ -35,11 +35,11 @@ public:
     static void SetRegistry(entt::registry* registry);
     static moodycamel::ConcurrentQueue<Message>* GetInputQueue() { return _inputQueue; }
     static void SetInputQueue(moodycamel::ConcurrentQueue<Message>* inputQueue);
-    static MessageHandler* GetNetworkMessageHandler() { return _networkMessageHandler; }
-    static void SetNetworkMessageHandler(MessageHandler* serverMessageHandler);
+    static NetPacketHandler* GetNetPacketHandler() { return _netPacketHandler; }
+    static void SetNetPacketHandler(NetPacketHandler* serverMessageHandler);
 
 private:
     static entt::registry* _registry;
     static moodycamel::ConcurrentQueue<Message>* _inputQueue;
-    static MessageHandler* _networkMessageHandler;
+    static NetPacketHandler* _netPacketHandler;
 };

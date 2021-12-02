@@ -1,5 +1,5 @@
 #pragma once
-#include <Networking/AddressType.h>
+#include <Networking/NetStructures.h>
 #include <entity/fwd.hpp>
 
 struct HasServerInformation

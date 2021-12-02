@@ -1,8 +1,8 @@
 #include "AuthHandlers.h"
 #include <entt.hpp>
-#include <Networking/MessageHandler.h>
-#include <Networking/NetworkPacket.h>
-#include <Networking/NetworkClient.h>
+#include <Networking/NetPacket.h>
+#include <Networking/NetClient.h>
+#include <Networking/NetPacketHandler.h>
 #include <Utils/ByteBuffer.h>
 #include <Utils/StringUtils.h>
 #include "../../../Utils/ServiceLocator.h"
@@ -14,12 +14,12 @@
 
 namespace Network
 {
-    void AuthHandlers::Setup(MessageHandler* messageHandler)
+    void AuthHandlers::Setup(NetPacketHandler* netPacketHandler)
     {
-        messageHandler->SetMessageHandler(Opcode::CMSG_LOGON_CHALLENGE, { ConnectionStatus::AUTH_CHALLENGE, 256 + 1, 256 + 1 + 32, AuthHandlers::ClientChallengeHandler });
-        messageHandler->SetMessageHandler(Opcode::CMSG_LOGON_HANDSHAKE, { ConnectionStatus::AUTH_HANDSHAKE, sizeof(ClientLogonHandshake), AuthHandlers::ClientHandshakeHandler });
+        netPacketHandler->SetMessageHandler(Opcode::CMSG_LOGON_CHALLENGE, { ConnectionStatus::AUTH_CHALLENGE, 256 + 1, 256 + 1 + 32, AuthHandlers::ClientChallengeHandler });
+        netPacketHandler->SetMessageHandler(Opcode::CMSG_LOGON_HANDSHAKE, { ConnectionStatus::AUTH_HANDSHAKE, sizeof(ClientLogonHandshake), AuthHandlers::ClientHandshakeHandler });
     }
-    bool AuthHandlers::ClientChallengeHandler(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
+    bool AuthHandlers::ClientChallengeHandler(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
     {
         std::string inUsername;
         u8 aBuffer[256];
@@ -28,7 +28,7 @@ namespace Network
         packet->payload->GetBytes(aBuffer, 256);
 
         entt::registry* registry = ServiceLocator::GetRegistry();
-        Authentication& authentication = registry->get<Authentication>(static_cast<entt::entity>(client->GetEntityId()));
+        Authentication& authentication = registry->get<Authentication>(client->GetEntity());
         authentication.username = inUsername;
 
         std::shared_ptr<Bytebuffer> sBuffer = Bytebuffer::Borrow<4>();
@@ -85,16 +85,16 @@ namespace Network
         buffer->Put<u16>(payloadSize, 2);
         client->Send(buffer);
 
-        client->SetStatus(ConnectionStatus::AUTH_HANDSHAKE);
+        client->SetConnectionStatus(ConnectionStatus::AUTH_HANDSHAKE);
         return true;
     }
-    bool AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
+    bool AuthHandlers::ClientHandshakeHandler(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
     {
         ClientLogonHandshake logonResponse;
         logonResponse.Deserialize(packet->payload);
 
         entt::registry* registry = ServiceLocator::GetRegistry();
-        Authentication& authentication = registry->get<Authentication>(static_cast<entt::entity>(client->GetEntityId()));
+        Authentication& authentication = registry->get<Authentication>(client->GetEntity());
 
         if (!authentication.srp.VerifySession(logonResponse.M1))
         {
@@ -119,7 +119,7 @@ namespace Network
         buffer->Put<u16>(payloadSize, 2);
         client->Send(buffer);
 
-        client->SetStatus(ConnectionStatus::AUTH_SUCCESS);
+        client->SetConnectionStatus(ConnectionStatus::AUTH_SUCCESS);
         return true;
     }
 }

@@ -1,10 +1,9 @@
 #pragma once
-#include <asio.hpp>
 #include <entity/fwd.hpp>
 #include <Utils/ConcurrentQueue.h>
 
 class NetworkServer;
-class BaseSocket;
+class NetClient;
 namespace moddycamel
 {
     class ConcurrentQueue;
@@ -15,11 +14,11 @@ public:
     static void Update(entt::registry& registry);
 
     // Handlers for Network Server
-    static void HandleConnection(NetworkServer* server, asio::ip::tcp::socket* socket, const asio::error_code& error);
+    static bool HandleConnection(std::shared_ptr<NetClient> netClient);
 
     // Handlers for Network Client
-    static void HandleRead(BaseSocket* socket);
-    static void HandleDisconnect(BaseSocket* socket);
+    static void HandleRead(std::shared_ptr<NetClient> netClient);
+    static void HandleDisconnect(std::shared_ptr<NetClient> netClient);
 };
 
 class ConnectionDeferredSystem

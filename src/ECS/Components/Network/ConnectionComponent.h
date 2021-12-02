@@ -1,8 +1,8 @@
 #pragma once
 #include <NovusTypes.h>
 #include <Utils/ConcurrentQueue.h>
-#include <Networking/NetworkPacket.h>
-#include <Networking/NetworkClient.h>
+#include <Networking/NetPacket.h>
+#include <Networking/NetClient.h>
 
 enum class PacketPriority
 {
@@ -23,8 +23,8 @@ struct ConnectionComponent
         highPriorityBuffer = Bytebuffer::Borrow<8192>();
     }
 
-    std::shared_ptr<NetworkClient> connection;
-    moodycamel::ConcurrentQueue<std::shared_ptr<NetworkPacket>> packetQueue;
+    std::shared_ptr<NetClient> netClient;
+    moodycamel::ConcurrentQueue<std::shared_ptr<NetPacket>> packetQueue;
 
     void AddPacket(std::shared_ptr<Bytebuffer> buffer, PacketPriority priority = PacketPriority::MEDIUM)
     {
@@ -47,7 +47,7 @@ struct ConnectionComponent
         // Should we send priority buffer's content before we add this due to size constraints
         if (bufferToUse->GetSpace() < bufferToUse->writtenData)
         {
-            connection->Send(bufferToUse);
+            netClient->Send(bufferToUse->GetDataPointer(), bufferToUse->writtenData);
             bufferToUse->Reset();
 
             if (bufferToUse == lowPriorityBuffer)

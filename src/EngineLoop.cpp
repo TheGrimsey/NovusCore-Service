@@ -2,9 +2,8 @@
 #include <thread>
 #include <Utils/Timer.h>
 #include "Utils/ServiceLocator.h"
-#include <Networking/InputQueue.h>
-#include <Networking/MessageHandler.h>
-#include <Networking/NetworkClient.h>
+#include <Networking/NetClient.h>
+#include <Networking/NetPacketHandler.h>
 #include <tracy/Tracy.hpp>
 
 // Component Singletons
@@ -29,8 +28,7 @@
 EngineLoop::EngineLoop()
     : _isRunning(false), _inputQueue(256), _outputQueue(16)
 {
-    _network.asioService = std::make_shared<asio::io_service>(2);
-    _network.internalServer = std::make_shared<NetworkServer>(_network.asioService, 8000);
+    _network.server = std::make_shared<NetServer>();
 }
 
 EngineLoop::~EngineLoop()
@@ -44,9 +42,6 @@ void EngineLoop::Start()
 
     // Setup Input Queue for libraries
     ServiceLocator::SetInputQueue(&_inputQueue);
-
-    std::thread threadRunIoService = std::thread(&EngineLoop::RunIoService, this);
-    threadRunIoService.detach();
 
     std::thread threadRun = std::thread(&EngineLoop::Run, this);
     threadRun.detach();
@@ -72,17 +67,13 @@ bool EngineLoop::TryGetMessage(Message& message)
     return _outputQueue.try_dequeue(message);
 }
 
-void EngineLoop::RunIoService()
-{
-    asio::io_service::work ioWork(*_network.asioService.get());
-    _network.asioService->run();
-}
 void EngineLoop::Run()
 {
+    tracy::SetThreadName("EngineThread");
+
     _isRunning = true;
 
     SetupUpdateFramework();
-    _updateFramework.gameRegistry.create();
 
     TimeSingleton& timeSingleton = _updateFramework.gameRegistry.set<TimeSingleton>();
     DBSingleton& dbSingleton = _updateFramework.gameRegistry.set<DBSingleton>();
@@ -91,10 +82,13 @@ void EngineLoop::Run()
     ConnectionDeferredSingleton& connectionDeferredSingleton = _updateFramework.gameRegistry.set<ConnectionDeferredSingleton>();
     LoadBalanceSingleton& loadBalanceSingleton = _updateFramework.gameRegistry.set<LoadBalanceSingleton>();
 
-    connectionDeferredSingleton.networkServer = _network.internalServer;
+    if (!_network.server->Init(NetSocket::Mode::TCP, "127.0.0.1", 8000))
+    {
+        DebugHandler::PrintFatal("Network : Failed to initialize server (NovusCore - Service)");
+    }
 
-    _network.internalServer->SetConnectionHandler(std::bind(&ConnectionUpdateSystem::HandleConnection, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-    _network.internalServer->Start();
+    _network.server->SetOnConnectCallback(ConnectionUpdateSystem::HandleConnection);
+    connectionDeferredSingleton.networkServer = _network.server;
 
     Timer timer;
     f32 targetDelta = 1.0f / 60.0f;
@@ -206,11 +200,11 @@ void EngineLoop::SetupUpdateFramework()
 }
 void EngineLoop::SetMessageHandler()
 {
-    auto messageHandler = new MessageHandler();
-    ServiceLocator::SetNetworkMessageHandler(messageHandler);
+    auto netPacketHandler = new NetPacketHandler();
+    ServiceLocator::SetNetPacketHandler(netPacketHandler);
 
-    Network::AuthHandlers::Setup(messageHandler);
-    Network::GeneralHandlers::Setup(messageHandler);
+    Network::AuthHandlers::Setup(netPacketHandler);
+    Network::GeneralHandlers::Setup(netPacketHandler);
 }
 void EngineLoop::UpdateSystems()
 {

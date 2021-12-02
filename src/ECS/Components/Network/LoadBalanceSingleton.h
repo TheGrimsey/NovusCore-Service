@@ -1,6 +1,6 @@
 #pragma once
 #include <NovusTypes.h>
-#include <Networking/AddressType.h>
+#include <Networking/NetStructures.h>
 #include <entity/fwd.hpp>
 #include <robin_hood.h>
 #include <vector>

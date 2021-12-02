@@ -29,7 +29,7 @@
 #include <Utils/Message.h>
 #include <Utils/StringUtils.h>
 #include <Utils/ConcurrentQueue.h>
-#include <Networking/NetworkServer.h>
+#include <Networking/NetServer.h>
 
 namespace tf
 {
@@ -52,9 +52,7 @@ enum class NetworkHostMode : u8
 struct NetworkPair
 {
     NetworkHostMode hostMode = NetworkHostMode::LOCAL;
-
-    std::shared_ptr<NetworkServer> internalServer;
-    std::shared_ptr<asio::io_service> asioService;
+    std::shared_ptr<NetServer> server;
 };
 
 class EngineLoop
@@ -83,7 +81,6 @@ public:
 
 private:
     void Run();
-    void RunIoService();
     bool Update();
     void UpdateSystems();
 

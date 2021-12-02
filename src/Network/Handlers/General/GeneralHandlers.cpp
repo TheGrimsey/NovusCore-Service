@@ -1,10 +1,11 @@
 #include "GeneralHandlers.h"
 #include <entt.hpp>
-#include <Networking/MessageHandler.h>
-#include <Networking/NetworkPacket.h>
-#include <Networking/NetworkClient.h>
-#include <Networking/AddressType.h>
+#include <Networking/NetStructures.h>
+#include <Networking/NetPacket.h>
+#include <Networking/NetClient.h>
+#include <Networking/NetPacketHandler.h>
 #include <Networking/PacketUtils.h>
+#include <Utils/DebugHandler.h>
 #include "../../../Utils/ServiceLocator.h"
 #include "../../../ECS/Components/Network/ConnectionComponent.h"
 #include "../../../ECS/Components/Network/LoadBalanceSingleton.h"
@@ -12,7 +13,7 @@
 
 namespace Network
 {
-    void GeneralHandlers::Setup(MessageHandler* messageHandler)
+    void GeneralHandlers::Setup(NetPacketHandler* messageHandler)
     {
         messageHandler->SetMessageHandler(Opcode::CMSG_CONNECTED, { ConnectionStatus::AUTH_SUCCESS, sizeof(AddressType) + 1 + 4 + 2, GeneralHandlers::HandleConnected });
         messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_ADDRESS, { ConnectionStatus::CONNECTED, sizeof(AddressType), 128, GeneralHandlers::HandleRequestAddress });
@@ -20,7 +21,7 @@ namespace Network
         messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_INTERNAL_SERVER_INFO, { ConnectionStatus::CONNECTED, 0, GeneralHandlers::HandleRequestServerInfo });
     }
 
-    bool GeneralHandlers::HandleConnected(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
+    bool GeneralHandlers::HandleConnected(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
     {
         // (AddressType type) is used to identify what kind of server just connected to us
         AddressType type;
@@ -45,7 +46,7 @@ namespace Network
         entt::registry* registry = ServiceLocator::GetRegistry();
         auto& loadBalanceSingleton = registry->ctx<LoadBalanceSingleton>();
 
-        entt::entity entity = static_cast<entt::entity>(client->GetEntityId());
+        const entt::entity& entity = client->GetEntity();
         HasServerInformation& hasServerInformation = registry->emplace<HasServerInformation>(entity);
 
         hasServerInformation.entity = entity;
@@ -115,10 +116,10 @@ namespace Network
         }
 
         client->Send(buffer);
-        client->SetStatus(ConnectionStatus::CONNECTED);
+        client->SetConnectionStatus(ConnectionStatus::CONNECTED);
         return true;
     }
-    bool GeneralHandlers::HandleRequestAddress(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
+    bool GeneralHandlers::HandleRequestAddress(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
     {
         AddressType type;
         if (!packet->payload->Get(type) ||
@@ -136,7 +137,7 @@ namespace Network
         u16 packetSize = 0;
         if (loadBalanceSingleton.Get<AddressType::LOADBALANCE>(serverInformation))
         {
-            if (!PacketUtils::Write_MSG_REQUEST_ADDRESS(buffer, type, static_cast<entt::entity>(client->GetEntityId()), packet->payload->GetReadPointer(), packet->payload->GetReadSpace()))
+            if (!PacketUtils::Write_MSG_REQUEST_ADDRESS(buffer, type, client->GetEntity(), packet->payload->GetReadPointer(), packet->payload->GetReadSpace()))
                 return false;
         }
         else
@@ -150,7 +151,7 @@ namespace Network
 
         return true;
     }
-    bool GeneralHandlers::HandleSendAddress(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
+    bool GeneralHandlers::HandleSendAddress(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
     {
         u8 status = 0;
         u32 address = 0;
@@ -182,7 +183,7 @@ namespace Network
         connection.AddPacket(buffer);
         return true;
     }
-    bool GeneralHandlers::HandleRequestServerInfo(std::shared_ptr<NetworkClient> client, std::shared_ptr<NetworkPacket>& packet)
+    bool GeneralHandlers::HandleRequestServerInfo(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
     {
         entt::registry* registry = ServiceLocator::GetRegistry();
         LoadBalanceSingleton& loadBalanceSingleton = registry->ctx<LoadBalanceSingleton>();
