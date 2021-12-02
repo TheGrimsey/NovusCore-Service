@@ -25,9 +25,22 @@
 #include "Network/Handlers/Auth/AuthHandlers.h"
 #include "Network/Handlers/General/GeneralHandlers.h"
 
+#ifdef WIN32
+#include "Winsock.h"
+#endif
+
 EngineLoop::EngineLoop()
     : _isRunning(false), _inputQueue(256), _outputQueue(16)
 {
+#ifdef WIN32
+    WSADATA data;
+    i32 code = WSAStartup(MAKEWORD(2, 2), &data);
+    if (code != 0)
+    {
+        DebugHandler::PrintFatal("[Network] Failed to initialize WinSock");
+    }
+#endif
+
     _network.server = std::make_shared<NetServer>();
 }
 
