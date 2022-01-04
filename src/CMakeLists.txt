@@ -2,7 +2,8 @@ project(novus-service VERSION 1.0.0 DESCRIPTION "Novus Service")
 
 file(GLOB_RECURSE NOVUS_SERVICE_FILES "*.cpp" "*.h")
 
-add_executable(${PROJECT_NAME} ${NOVUS_SERVICE_FILES})
+set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
+add_executable(${PROJECT_NAME} ${NOVUS_SERVICE_FILES} ${APP_ICON_RESOURCE_WINDOWS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ${ROOT_FOLDER})
 
 find_assign_files(${NOVUS_SERVICE_FILES})
