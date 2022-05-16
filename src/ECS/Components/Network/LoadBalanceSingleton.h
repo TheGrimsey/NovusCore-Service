@@ -10,7 +10,7 @@ struct ServerInformation
 {
     entt::entity entity = entt::null;
     AddressType type = AddressType::INVALID;
-    u8 realmId = 0;
+    u16 realmId = 0;
     u32 address = 0;
     u16 port = 0;
 };
@@ -127,6 +127,7 @@ struct LoadBalanceSingleton
             {
                 worldServersMap[info.realmId] = std::vector<ServerInformation>();
                 worldServersMap[info.realmId].reserve(8);
+                worldServersIndex.push_back(0);
             }
 
             worldServersMap[info.realmId].push_back(info);
@@ -143,7 +144,7 @@ struct LoadBalanceSingleton
         }
     }
     template <AddressType type>
-    inline bool Get(ServerInformation& serverInformation, u8 realmId = 0)
+    inline bool Get(ServerInformation& serverInformation, u16 realmId = 0)
     {
         if constexpr (type == AddressType::AUTH)
         {
@@ -199,7 +200,7 @@ struct LoadBalanceSingleton
             if (numOf == 0)
                 return false;
 
-            u8& index = realmServersIndex[realmId];
+            u16& index = realmServersIndex[realmId];
             serverInformation = realmServersMap[realmId][index++];
 
             // Wrap index around if needed
@@ -212,7 +213,7 @@ struct LoadBalanceSingleton
             if (numOf == 0)
                 return false;
 
-            u8& index = worldServersIndex[realmId];
+            u16& index = worldServersIndex[realmId];
             serverInformation = worldServersMap[realmId][index++];
 
             // Wrap index around if needed
@@ -225,7 +226,7 @@ struct LoadBalanceSingleton
             if (numOf == 0)
                 return false;
 
-            u8& index = instanceServersIndex[realmId];
+            u16& index = instanceServersIndex[realmId];
             serverInformation = instanceServersMap[realmId][index++];
 
             // Wrap index around if needed
@@ -281,21 +282,21 @@ struct LoadBalanceSingleton
         return loadBalancers;
     }
 private:
-    u8 authIndex = 0;
-    u8 loadBalanceIndex = 0;
-    u8 regionIndex = 0;
-    u8 chatIndex = 0;
+    u16 authIndex = 0;
+    u16 loadBalanceIndex = 0;
+    u16 regionIndex = 0;
+    u16 chatIndex = 0;
 
     std::vector<ServerInformation> authServers;
     std::vector<ServerInformation> loadBalancers;
     std::vector<ServerInformation> regionServers;
     std::vector<ServerInformation> chatServers;
 
-    std::vector<u8> realmServersIndex;
-    std::vector<u8> worldServersIndex;
-    std::vector<u8> instanceServersIndex;
+    std::vector<u16> realmServersIndex;
+    std::vector<u16> worldServersIndex;
+    std::vector<u16> instanceServersIndex;
 
-    robin_hood::unordered_map<u8, std::vector<ServerInformation>> realmServersMap;
-    robin_hood::unordered_map<u8, std::vector<ServerInformation>> worldServersMap;
-    robin_hood::unordered_map<u8, std::vector<ServerInformation>> instanceServersMap;
+    robin_hood::unordered_map<u16, std::vector<ServerInformation>> realmServersMap;
+    robin_hood::unordered_map<u16, std::vector<ServerInformation>> worldServersMap;
+    robin_hood::unordered_map<u16, std::vector<ServerInformation>> instanceServersMap;
 };

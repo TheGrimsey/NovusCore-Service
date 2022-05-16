@@ -14,5 +14,6 @@ namespace Network
         static bool HandleRequestAddress(std::shared_ptr<NetClient>, std::shared_ptr<NetPacket>);
         static bool HandleSendAddress(std::shared_ptr<NetClient>, std::shared_ptr<NetPacket>);
         static bool HandleRequestServerInfo(std::shared_ptr<NetClient>, std::shared_ptr<NetPacket>);
+        static bool HandleRequestRealmConnectionInfo(std::shared_ptr<NetClient>, std::shared_ptr<NetPacket>);
     };
 }
