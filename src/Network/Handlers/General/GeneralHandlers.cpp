@@ -19,6 +19,8 @@ namespace Network
         messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_ADDRESS, { ConnectionStatus::CONNECTED, sizeof(AddressType), 128, GeneralHandlers::HandleRequestAddress });
         messageHandler->SetMessageHandler(Opcode::SMSG_SEND_ADDRESS, { ConnectionStatus::CONNECTED, 1, 128, GeneralHandlers::HandleSendAddress });
         messageHandler->SetMessageHandler(Opcode::MSG_REQUEST_INTERNAL_SERVER_INFO, { ConnectionStatus::CONNECTED, 0, GeneralHandlers::HandleRequestServerInfo });
+        messageHandler->SetMessageHandler(Opcode::SMSG_REQUEST_REALM_CONNECTION_INFO, { ConnectionStatus::CONNECTED, sizeof(u16) + sizeof(entt::entity), GeneralHandlers::HandleRequestRealmConnectionInfo});
+
     }
 
     bool GeneralHandlers::HandleConnected(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
@@ -207,6 +209,31 @@ namespace Network
         u16 packetSize = static_cast<u16>(buffer->writtenData - startWrittenData);
         buffer->Put(packetSize, 2);
         client->Send(buffer);
+
+        return true;
+    }
+    bool GeneralHandlers::HandleRequestRealmConnectionInfo(std::shared_ptr<NetClient> client, std::shared_ptr<NetPacket> packet)
+    {
+        u16 realmID = 0;
+
+        if (!packet->payload->GetU16(realmID))
+            return false;
+
+        DebugHandler::Print("RealmConnectionInfo: %u", realmID);
+
+        entt::registry* registry = ServiceLocator::GetRegistry();
+        LoadBalanceSingleton& loadBalanceSingleton = registry->ctx<LoadBalanceSingleton>();
+        const std::vector<ServerInformation> serverInformations = loadBalanceSingleton.GetServerInformations();
+        
+        ServerInformation info;
+        loadBalanceSingleton.Get<AddressType::WORLD>(info, realmID);
+        
+        std::shared_ptr<Bytebuffer> buffer = Bytebuffer::Borrow<128>();
+        if (!PacketUtils::Write_SMSG_SEND_REALM_CONNECTION_INFO(buffer, static_cast<u8>(info.entity != entt::null), info.address, info.port, packet->payload->GetReadPointer(), packet->payload->GetReadSpace()))
+            return false;
+
+        ConnectionComponent& connection = registry->get<ConnectionComponent>(client->GetEntity());
+        connection.AddPacket(buffer);
 
         return true;
     }
