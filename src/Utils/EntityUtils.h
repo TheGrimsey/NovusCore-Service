@@ -1,6 +1,5 @@
 #pragma once
 #include <NovusTypes.h>
-#include <string>
 #include <memory>
 #include <entity/fwd.hpp>
 

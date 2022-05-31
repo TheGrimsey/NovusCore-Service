@@ -25,7 +25,8 @@
 #include <NovusTypes.h>
 #include <entt.hpp>
 #include <Utils/ConcurrentQueue.h>
-#include <Utils/Message.h>
+
+struct Message;
 
 class NetPacketHandler;
 class ServiceLocator

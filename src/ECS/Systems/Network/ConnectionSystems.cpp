@@ -2,9 +2,12 @@
 #include <entt.hpp>
 #include <Networking/NetClient.h>
 #include <Networking/NetServer.h>
+#include <Networking/NetPacket.h>
 #include <Networking/PacketUtils.h>
 #include <Networking/NetPacketHandler.h>
 #include <Utils/DebugHandler.h>
+#include <Utils/ConcurrentQueue.h>
+
 #include "../../Components/Singletons/TimeSingleton.h"
 #include "../../Components/Network/ConnectionDeferredSingleton.h"
 #include "../../Components/Network/LoadBalanceSingleton.h"

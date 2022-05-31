@@ -1,8 +1,10 @@
 #include "AuthHandlers.h"
+#include <sstream>
 #include <entt.hpp>
 #include <Networking/NetPacket.h>
 #include <Networking/NetClient.h>
 #include <Networking/NetPacketHandler.h>
+#include <Database/mysql/QueryResult.h>
 #include <Utils/ByteBuffer.h>
 #include <Utils/StringUtils.h>
 #include "../../../Utils/ServiceLocator.h"

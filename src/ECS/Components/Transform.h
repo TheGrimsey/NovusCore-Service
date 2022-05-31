@@ -1,7 +1,5 @@
 #pragma once
 #include <NovusTypes.h>
-#include <glm/matrix.hpp>
-#include <glm/gtx/rotate_vector.hpp>
 
 enum class MovementFlags : u32
 {
